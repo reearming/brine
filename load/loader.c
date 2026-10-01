@@ -45,10 +45,13 @@ int try_PE(int fd) {
         goto unmap;
     }
 
-    uint8_t *optional_header = (uint8_t *)(coff_header + 1);
-    // standard fields
-    uint16_t optional_magic = *(uint16_t *)optional_header;
+    struct standard_fields *standard_fields = (struct standard_fields *)(coff_header + 1);
+    if (standard_fields->magic == PE32P) {
+         
+    }
+    else {
 
+    }
 
     munmap(pe_file, sb.st_size);
     return 0;
