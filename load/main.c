@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
         return 1;
     } 
     int fd = open(argv[1], O_RDONLY);
-    try_PE(fd);
+    parse(fd);
 
     return 0;
 }

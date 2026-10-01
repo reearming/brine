@@ -3,19 +3,31 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #define MZ_SIGNATURE 0x5A4D
 #define PE_HEADER_OFFSET 0x3C
-#define IMAGE_FILE_MACHINE_AMD64 0x8664
-#define IMAGE_FILE_MACHINE_I386 0x14c
-#define IMAGE_FILE_EXECUTABLE_IMAGE 0x0002 
-#define IMAGE_FILE_DLL 0x2000
 #define PE32 0x10b
 #define PE32P 0x20b
+#define IMAGE_FILE_MACHINE_AMD64 0x8664
+#define IMAGE_FILE_MACHINE_I386 0x14c
+#define IMAGE_FILE_EXECUTABLE_IMAGE 0x0002
+#define IMAGE_FILE_DLL 0x2000
 
-int try_PE(int fd);
+static inline void exit_unmap(uint8_t *file, struct stat sb) {
+    munmap(file, sb.st_size);
+    exit(1);
+}
 
-struct COFF {
+static inline void exit_closefd(int fd) {
+    close(fd);
+    exit(1);
+}
+
+struct coff_header {
     uint16_t machine;
     uint16_t number_of_sections;
     uint32_t time_date_stamp;
@@ -86,4 +98,28 @@ struct data_directory {
     uint16_t virtual_address;
     uint16_t size;
 };
+
+struct pe32p_optional {
+    struct standard_fields standard_fields;
+    struct specific_fields_pe32p specific_fields;
+    struct data_directory data_directory[16];
+};
+
+struct pe32_optional {
+    struct standard_fields standard_fields;
+    struct specific_fields_pe32 specific_fields;
+    struct data_directory data_directory[16];
+};
+
+struct pe {
+    uint16_t mz_sig;
+    uint32_t pe_sig;
+    struct coff_header coff;
+    union {
+        struct pe32p_optional pe32p;
+        struct pe32_optional pe32;
+    } optional ;
+};
+
+struct pe *parse(int fd);
 #endif
