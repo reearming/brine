@@ -15,6 +15,6 @@ loader.o: load/loader.c
 	$(CC) $(CFLAGS) -c $(SRCS)
 
 clean:
-	rm -f brine *.o *.pieo
+	rm -f brine *.o .depend* 
 
 
