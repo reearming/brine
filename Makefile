@@ -1,5 +1,6 @@
 CC=		clang
-CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
+#CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
+CFLAGS=	-O0
 
 SRCS=	load/main.c load/loader.c
 
@@ -15,6 +16,6 @@ loader.o: load/loader.c
 	$(CC) $(CFLAGS) -c $(SRCS)
 
 clean:
-	rm -f *.o .depend* 
+	rm -f *.o .depend*
 
 

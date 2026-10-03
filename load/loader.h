@@ -111,14 +111,27 @@ struct pe32_optional {
     struct data_directory data_directory[16];
 };
 
+struct section_table {
+    uint8_t name[8];
+    uint32_t virtual_size;
+    uint32_t virtual_address;
+    uint32_t size_of_raw_data;
+    uint32_t pointer_to_raw_data;
+    uint32_t pointer_to_relocations;
+    uint32_t pointer_to_linenumbers;
+    uint16_t number_of_relocations;
+    uint16_t number_of_linenumbers;
+    uint32_t characteristics;
+};
+
 struct pe {
     uint16_t mz_sig;
-    uint32_t pe_sig;
+    uint32_t *pe_sig;
     struct coff_header *coff;
     union {
         struct pe32p_optional *pe32p;
         struct pe32_optional *pe32;
-    } optional ;
+    } optional;
 };
 
 struct pe *parse(int fd);
