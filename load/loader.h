@@ -114,10 +114,10 @@ struct pe32_optional {
 struct pe {
     uint16_t mz_sig;
     uint32_t pe_sig;
-    struct coff_header coff;
+    struct coff_header *coff;
     union {
-        struct pe32p_optional pe32p;
-        struct pe32_optional pe32;
+        struct pe32p_optional *pe32p;
+        struct pe32_optional *pe32;
     } optional ;
 };
 

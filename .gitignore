@@ -2,3 +2,5 @@
 *.pieo
 .depend*
 brine
+brine.core
+

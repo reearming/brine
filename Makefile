@@ -1,5 +1,5 @@
 CC=		clang
-CFLAGS=	-O2
+CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
 
 SRCS=	load/main.c load/loader.c
 
