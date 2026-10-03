@@ -1,18 +1,18 @@
 CC=		clang
-#CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
-CFLAGS=	-O0
+CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
+#CFLAGS=	-O0
 
-SRCS=	load/main.c load/loader.c
+SRCS=	loader/main.c loader/loader.c
 
 all:	brine
 
 brine: main.o loader.o
 	$(CC) $(CFLAGS) -o brine main.o loader.o
 
-main.o: load/main.c
+main.o: loader/main.c
 	$(CC) $(CFLAGS) -c $(SRCS)
 
-loader.o: load/loader.c
+loader.o: loader/loader.c
 	$(CC) $(CFLAGS) -c $(SRCS)
 
 clean:

@@ -75,45 +75,51 @@ void *parse_optional(struct coff_header *coff_header) {
     return optional;
 }
 
-struct section_table *parse_section_table(void *optional) {
+struct section_table *parse_section_table(struct pe *pe, void *optional) {
+    struct section_table *table;
     if (*(uint16_t *)optional == PE32) {
-        struct section_table *table = (struct section_table *)((struct pe32_optional *)optional + 1);
-        return table;
+        table = (struct section_table *)((struct pe32_optional *)optional + 1);
     }
-    else {
-        struct section_table *table = (struct section_table *)((struct pe32p_optional *)optional + 1);
-        return table;
+    else if (*(uint16_t*)optional == PE32P){
+        table = (struct section_table *)((struct pe32p_optional *)optional + 1);
     }
-    return NULL;
+    else
+        return NULL;
+    return table;
 }
 
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name) {
     for (uint16_t i = 0; i < tables_count; i++) {
-        if ((const char *)table[i].name == name) {
+        if (strncmp((const char *)table[i].name, name, 8) == 0) {
             return &table[i];
         }
     }
     return NULL;
 }
 
-void *load_section(const void* section, size_t size, int loadprot, int prot, int flags) {
-    int fd = shm_open(SHM_ANON, O_RDWR, 0600);
-    ftruncate(fd, size);
+uint8_t *load_section(uint8_t *pe_file, struct section_table *section, int loadprot, int prot, int flags) {
+    uint8_t *allocated = mmap(NULL, section->size_of_raw_data, loadprot, flags, -1, 0);
+    if (allocated == MAP_FAILED) {
+        printf("failed to mmap section");
+        exit_unmap(pe_file, sb);
+    }
+    memcpy(allocated, pe_file + section->pointer_to_raw_data, section->size_of_raw_data);
 
-    void *wptr = mmap(NULL, size, loadprot, flags, fd, 0);
-    memcpy(wptr, section, size);
+    if (mprotect(allocated, section->size_of_raw_data, prot) == -1) {
+        printf("failed to mprotect a section");
+        munmap(allocated, section->size_of_raw_data);
+        exit_unmap(pe_file, sb);
+    }
 
-    void *ptr = mmap(NULL, size, prot, flags, fd, 0);
-    munmap(wptr, size);
-    close(fd);
+    uint8_t *entry_point_addr = allocated;
 
-    return ptr;
+    return entry_point_addr;
 }
 
 struct pe *parse(int f) {
     fd = f;
     if (fd < 0) {
-        printf("can't open the file");
+        printf("can't open the file\n");
         exit(1);
     }
 
@@ -136,19 +142,33 @@ struct pe *parse(int f) {
         pe->optional.pe32 = (struct pe32_optional *)optional_ptr;
     }
     else {
-        printf("optional header magic is undefined (0x%x != 0x%x || 0x%x != 0x%x)", *(uint16_t *)optional_ptr, PE32, *(uint16_t *)optional_ptr, PE32P);
+        printf("optional header magic is undefined (0x%x != 0x%x || 0x%x != 0x%x)\n", *(uint16_t *)optional_ptr, PE32, *(uint16_t *)optional_ptr, PE32P);
     }
     
-    struct section_table *section_table = parse_section_table(optional_ptr);
-    
+    struct section_table *section_table = parse_section_table(pe, optional_ptr);
+    pe->section_table = section_table;
+
     struct section_table *text = get_section(section_table, coff_header->number_of_sections, ".text");
+    if (text == NULL) {
+        printf(".text section not found\n");
+        exit_unmap(pe_file, sb);
+    }
 
-    void *text_ptr = load_section(pe_file + text->virtual_address, text->virtual_size, PROT_READ | PROT_WRITE, PROT_READ | PROT_EXEC, MAP_SHARED);
-    
-    void *entry_point = text_ptr + (pe->optional.pe32p->standard_fields.address_of_entry_point - text->virtual_address);
-
-    ((void(*)())entry_point)();
+    uint8_t *section_text = load_section(pe_file, text, PROT_READ | PROT_WRITE | PROT_MAX(PROT_READ | PROT_WRITE | PROT_EXEC), PROT_READ | PROT_EXEC, MAP_ANON | MAP_PRIVATE);
+    uint32_t entry_point = 0;
+    if (((struct standard_fields *)optional_ptr)->magic == PE32P) {
+        entry_point = pe->optional.pe32p->standard_fields->address_of_entry_point;
+    } 
+    else {
+        entry_point = pe->optional.pe32->standard_fields->address_of_entry_point;
+    }
 
     printf("test\n");
+    uint8_t *entry = section_text + (entry_point - text->virtual_address); //вот тут segmentation fault
+    printf("test 2\n");
+    typedef void (*entry_t)(void);
+    entry_t run_payload = (entry_t)entry;
+    run_payload();
+
     return pe;
 }
