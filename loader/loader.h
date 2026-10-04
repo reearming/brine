@@ -100,14 +100,14 @@ struct data_directory {
 };
 
 struct pe32p_optional {
-    struct standard_fields *standard_fields;
-    struct specific_fields_pe32p *specific_fields;
+    struct standard_fields standard_fields;
+    struct specific_fields_pe32p specific_fields;
     struct data_directory data_directory[16];
 };
 
 struct pe32_optional {
-    struct standard_fields *standard_fields;
-    struct specific_fields_pe32 *specific_fields;
+    struct standard_fields standard_fields;
+    struct specific_fields_pe32 specific_fields;
     struct data_directory data_directory[16];
 };
 

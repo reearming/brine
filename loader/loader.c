@@ -76,15 +76,7 @@ void *parse_optional(struct coff_header *coff_header) {
 }
 
 struct section_table *parse_section_table(struct pe *pe, void *optional) {
-    struct section_table *table;
-    if (*(uint16_t *)optional == PE32) {
-        table = (struct section_table *)((struct pe32_optional *)optional + 1);
-    }
-    else if (*(uint16_t*)optional == PE32P){
-        table = (struct section_table *)((struct pe32p_optional *)optional + 1);
-    }
-    else
-        return NULL;
+    struct section_table *table = (struct section_table *)((uint8_t *)optional + pe->coff->size_of_optional_header);
     return table;
 }
 
@@ -135,14 +127,16 @@ struct pe *parse(int f) {
     pe->coff = coff_header;
 
     void *optional_ptr = parse_optional(coff_header);
-    if (((struct standard_fields *)optional_ptr)->magic == PE32P) {
+    uint16_t optional_magic = ((struct standard_fields *)optional_ptr)->magic;
+    if (optional_magic == PE32P) {
         pe->optional.pe32p = (struct pe32p_optional *)optional_ptr;
     }
-    else if (((struct standard_fields *)optional_ptr)->magic == PE32) {
+    else if (optional_magic == PE32) {
         pe->optional.pe32 = (struct pe32_optional *)optional_ptr;
     }
     else {
         printf("optional header magic is undefined (0x%x != 0x%x || 0x%x != 0x%x)\n", *(uint16_t *)optional_ptr, PE32, *(uint16_t *)optional_ptr, PE32P);
+        exit_unmap(pe_file, sb);
     }
     
     struct section_table *section_table = parse_section_table(pe, optional_ptr);
@@ -153,19 +147,16 @@ struct pe *parse(int f) {
         printf(".text section not found\n");
         exit_unmap(pe_file, sb);
     }
-
     uint8_t *section_text = load_section(pe_file, text, PROT_READ | PROT_WRITE | PROT_MAX(PROT_READ | PROT_WRITE | PROT_EXEC), PROT_READ | PROT_EXEC, MAP_ANON | MAP_PRIVATE);
     uint32_t entry_point = 0;
-    if (((struct standard_fields *)optional_ptr)->magic == PE32P) {
-        entry_point = pe->optional.pe32p->standard_fields->address_of_entry_point;
+    if (optional_magic == PE32P) {
+        entry_point = pe->optional.pe32p->standard_fields.address_of_entry_point;
     } 
     else {
-        entry_point = pe->optional.pe32->standard_fields->address_of_entry_point;
+        entry_point = pe->optional.pe32->standard_fields.address_of_entry_point;
     }
 
-    printf("test\n");
-    uint8_t *entry = section_text + (entry_point - text->virtual_address); //вот тут segmentation fault
-    printf("test 2\n");
+    uint8_t *entry = section_text + (entry_point - text->virtual_address);
     typedef void (*entry_t)(void);
     entry_t run_payload = (entry_t)entry;
     run_payload();
