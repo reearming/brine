@@ -2,6 +2,9 @@ CC=		clang
 CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
 #CFLAGS=	-O0
 
+LIB=	/usr/local/lib/brine
+BIN=	/usr/local/bin
+
 SRCS=	loader/main.c loader/loader.c
 
 all:	brine
@@ -18,4 +21,8 @@ loader.o: loader/loader.c
 clean:
 	rm -f *.o .depend*
 
+install: brine
+	cp brine /usr/local/bin
 
+uninstall: $(BIN)/brine
+	rm -rf $(BIN)/brine
