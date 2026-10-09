@@ -1,28 +1,35 @@
 CC=		clang
 CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
 #CFLAGS=	-O0
+CFLAGSLIB=	-target x86_64-pc-windows-msvc -shared -fuse-ld=lld -nostdlib
 
 LIB=	/usr/local/lib/brine
 BIN=	/usr/local/bin
 
-SRCS=	loader/main.c loader/loader.c
+BINSRCS=	loader/main.c loader/loader.c 
+OUT=	out
 
 all:	brine
 
-brine: main.o loader.o
+brine: object 
 	$(CC) $(CFLAGS) -o brine main.o loader.o
 
-main.o: loader/main.c
-	$(CC) $(CFLAGS) -c $(SRCS)
+object: $(BINSRCS)
+	$(CC) $(CFLAGS) -c $(BINSRCS)
 
-loader.o: loader/loader.c
-	$(CC) $(CFLAGS) -c $(SRCS)
+test.dll: lib/test.c
+	mkdir -p out
+	$(CC) $(CFLAGSLIB) -o test.dll lib/test.c
+
+test.exe:
+	$(CC) --target=x86_64-pc-windows-gnu loader/test.asm -o loader/test.exe
 
 clean:
 	rm -f *.o .depend*
 
 install: brine
+	mkdir -p $(LIB)
 	cp brine /usr/local/bin
 
-uninstall: $(BIN)/brine
-	rm -rf $(BIN)/brine
+uninstall: $(BIN)/brine $(LIB)
+	rm -rf $(BIN)/brine $(LIB)

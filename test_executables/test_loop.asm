@@ -3,8 +3,8 @@ global main
 
 section .text
 main:
-    mov rax, 40      
-    add rax, 2       
+    mov rdi, 40      
+    add rdi, 2
     
 .loop:
     jmp .loop       
