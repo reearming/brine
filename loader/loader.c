@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/param.h>
+#include <dlfcn.h>
 
 static int fd;
 static struct stat sb;
@@ -40,7 +41,7 @@ uint8_t *map_file(int map_fd) {
     return file;
 }
 
-struct coff_header *parse_coff(uint8_t *pe_file, uint32_t *pe_sig) {
+struct coff_header *parse_coff(uint32_t *pe_sig) {
     struct coff_header *coff_header = (struct coff_header *)(pe_sig + 1);
     return coff_header;
 }
@@ -64,14 +65,13 @@ struct section_table *get_section(struct section_table *table, uint16_t tables_c
     return NULL;
 }
 
-uint8_t *load_section(uint8_t *source, uint32_t limit, uint8_t *destination, int prot) { 
+int load_section(uint8_t *source, uint32_t limit, uint8_t *destination, int prot) { 
     memcpy(destination, source, limit);
-    if (mprotect(destination, limit, prot) == -1)
-        return NULL;
+    /*uint32_t aligned_limit = (limit + 4095) & ~4095;
+    if (mprotect(destination, aligned_limit, prot) < 0)
+        return -1;*/
 
-    uint8_t *entry_point_addr = source;
-
-    return entry_point_addr;
+    return 0;
 }
 
 uint8_t *load_sections(uint8_t *raw_file, struct pe *pe) {
@@ -86,19 +86,16 @@ uint8_t *load_sections(uint8_t *raw_file, struct pe *pe) {
         size_of_headers = pe->optional.pe32p->size_of_headers;
     }
 
-    uint8_t *mapped_file = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+    uint8_t *mapped_file = mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_PRIVATE, -1, 0);
     if (mapped_file == MAP_FAILED)
         return NULL;
     memcpy(mapped_file, raw_file, size_of_headers);
     for (uint32_t i = 0; i < pe->coff->number_of_sections; i++) {
-        int prot = PROT_READ;
+        int prot = PROT_READ | PROT_WRITE;
         if (strncmp((const char *)pe->section_table[i].name, ".text", 8) == 0)
-            prot |= PROT_EXEC;
-        else if (strncmp((const char *)pe->section_table[i].name, ".data", 8) == 0)
-            prot |= PROT_WRITE;
+            prot |= PROT_EXEC; 
 
-        uint8_t *section = load_section(raw_file + pe->section_table[i].pointer_to_raw_data, pe->section_table[i].size_of_raw_data, mapped_file + pe->section_table[i].virtual_address, prot);
-        if (section == NULL)
+        if (load_section(raw_file + pe->section_table[i].pointer_to_raw_data, pe->section_table[i].size_of_raw_data, mapped_file + pe->section_table[i].virtual_address, prot) < 0)
             return NULL;
     }
     return mapped_file;
@@ -109,7 +106,7 @@ struct pe *parse(int f, uint8_t **file, struct stat *sb_arg, int image_type) {
 
     uint16_t mz_sig = try_MZ();
     if (mz_sig != MZ_SIGNATURE) {
-        printf("provided file doesm't contain MZ signature (0x%x != 0x%x)\n", mz_sig, MZ_SIGNATURE);
+        printf("provided file doesn't contain MZ signature (0x%x != 0x%x)\n", mz_sig, MZ_SIGNATURE);
         exit_closefd(fd);
     }
 
@@ -130,7 +127,7 @@ struct pe *parse(int f, uint8_t **file, struct stat *sb_arg, int image_type) {
     }
     pe->pe_sig = pe_sig;
 
-    struct coff_header *coff_header = parse_coff(raw_file, pe_sig);
+    struct coff_header *coff_header = parse_coff(pe_sig);
     pe->coff = coff_header;
     
     if (image_type == IMAGE_FILE_EXECUTABLE && !(coff_header->characteristics & IMAGE_FILE_EXECUTABLE)) {
@@ -169,12 +166,10 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
     uint16_t optional_magic = pe->optional_magic; 
 
     if (optional_magic == PE32) {
-        uint32_t idt_rva = pe->optional.pe32->dir[1].virtual_address;
-        struct import_descriptor *idt = (struct import_descriptor *)(mapped_file + idt_rva);
+        uint32_t idt_rva = pe->optional.pe32->data_directory[1].virtual_address;
+        struct import_descriptor_table *idt = (struct import_descriptor_table *)(mapped_file + idt_rva);
 
-        uint32_t ilt_rva = idt->original_first_thunk;
-        if (ilt_rva == 0)
-            ilt_rva = idt->first_thunk;
+        uint32_t ilt_rva = idt->ilt_rva;
 
         uint32_t *ILT = (uint32_t *)(mapped_file + ilt_rva);
         uint32_t ordinal = 0x80000000 & *ILT;
@@ -187,57 +182,92 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
         }
     }
     else {
-        uint32_t idt_rva = *(uint32_t *)((uint8_t *)pe->optional.pe32p + 120);
-        //uint32_t idt_rva = pe->optional.pe32p->dir[1].virtual_address;
+        uint32_t idt_rva = pe->optional.pe32p->data_directory[1].virtual_address;
 
-        struct import_descriptor *idt = (struct import_descriptor *)(mapped_file + idt_rva);
+        struct import_descriptor_table *idt = (struct import_descriptor_table *)(mapped_file + idt_rva);
 
-        uint32_t ilt_rva = idt->original_first_thunk;
-        if (ilt_rva == 0)
-            ilt_rva = idt->first_thunk; 
 
-        uint64_t *ILT = (uint64_t *)(mapped_file + ilt_rva);
-        uint64_t ordinal = *ILT & 0x8000000000000000ULL;
+        //uint64_t *ILT = (uint64_t *)(mapped_file + idt->ilt_rva);
+        uint32_t lookup_rva = 0;
+        if (idt->ilt_rva != 0)
+            lookup_rva = idt->ilt_rva;
+        else
+            lookup_rva = idt->iat_rva;
+        
+        uint64_t *ILT = (uint64_t *)(mapped_file + lookup_rva);
+        uint64_t *IAT = (uint64_t *)(mapped_file + idt->iat_rva);
 
-        if (ordinal) {
+        for (int i = 0; ILT[i] != 0; i++) {
+            uint64_t ordinal = ILT[i] & 0x8000000000000000ULL;
 
-        }
-        else {
-            uint32_t hint_table_rva = *ILT & 0x7FFFFFFF;
-            uint8_t *hint_table = mapped_file + hint_table_rva;
-            char *name = (char *)(hint_table + 2);
-            
-            char dll_path[MAXPATHLEN];
-            
-            long path_written = snprintf(dll_path, sizeof(dll_path), "%s%s", lib_dir, (char *)(mapped_file + idt->name));
+            if (ordinal) {
 
-            if (path_written >= (long)sizeof(dll_path) || path_written < 0)
-                return 1;
-
-            int dll_fd = open(dll_path, O_RDONLY);
-
-            if (dll_fd)
-                return 1;
-
-            uint8_t *dll_file = 0;
-            struct stat dll_sb;
-
-            struct pe *dll_pe = parse(dll_fd, &dll_file, &dll_sb, IMAGE_FILE_DLL);
-
-            if (dll_pe->optional_magic == PE32) {
-                printf("dll architecture mismatch (0x%x != 0x%x\n", PE32P, PE32);
-                exit_unmap(dll_file, dll_sb);
             }
+            else {
+                uint32_t hint_table_rva = ILT[i] & 0x7FFFFFFF;
+                uint8_t *hint_table = mapped_file + hint_table_rva;
+                char *name = (char *)(hint_table + 2);
+                
+                char lib_path[MAXPATHLEN];
+                
+                long path_written = snprintf(lib_path, sizeof(lib_path), "%s%s.so", lib_dir, (char *)(mapped_file + idt->name_rva));
 
-            uint8_t *mapped_dll = load_sections(dll_file, dll_pe);
+                if (path_written >= (long)sizeof(lib_path) || path_written < 0)
+                    return -1;
 
-            uint32_t iet_rva = *(uint32_t *)((uint8_t *)pe->optional.pe32p + 116);
-            struct export_descriptor *iet = (struct export_descriptor *)(mapped_dll + iet_rva);
+                void *lib = dlopen(lib_path, RTLD_LAZY);
+                if (!lib) {
+                    fprintf(stderr, "error loading %s\n", lib_path);
+                    return -2;
+                }
+                dlerror();
+                void *func = dlsym(lib, name);
+
+                char *error;
+                if ((error = dlerror()) != NULL) {
+                    fprintf(stderr, "error finding function %s\n", name);
+                    return -3;
+                }
+
+                IAT[i] = (uint64_t)func;
+                *count += 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int base_relocation(uint8_t *mapped_file, struct pe *pe, uint64_t delta) {
+    struct data_directory reloc_dir;
+
+    if (pe->optional_magic == PE32) {
+        reloc_dir = pe->optional.pe32->data_directory[5];
+    }
+    else {
+        reloc_dir = pe->optional.pe32p->data_directory[5];
+        
+        uint8_t *reloc_ptr = mapped_file + reloc_dir.virtual_address;
+        uint8_t *reloc_end = reloc_ptr + reloc_dir.size;
+        
+        while (reloc_ptr < reloc_end) {
+            struct base_relocation_block *reloc = (struct base_relocation_block *)reloc_ptr;
+
+            uint32_t entries_count = (reloc->block_size - sizeof(struct base_relocation_block)) / 2;
+
+            uint16_t *entries = (uint16_t *)(reloc + 1);
+            for (uint32_t i = 0; i < entries_count; i++) {
+                uint16_t entry = entries[i];
+                uint32_t reloc_type = entry >> 12;
+                uint32_t offset = entry & 0x0FFF;
+
+                if (reloc_type == IMAGE_REL_BASED_DIR64) {
+                    uint64_t *target = (uint64_t *)(mapped_file + reloc->page_rva + offset);
+                    *target += delta;
+                }
+            }
             
-            struct eat *eat = (struct eat *)(mapped_file + iet->export_address_table_rva);
-            uint8_t *func = mapped_dll + eat->export_rva;
-
-            printf("%x\n", func);
+            reloc_ptr += reloc->block_size;
         }
     }
 

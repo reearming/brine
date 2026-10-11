@@ -4,4 +4,4 @@
 brine
 brine.core
 out/
-
+*.so

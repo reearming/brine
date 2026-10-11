@@ -1,35 +1,36 @@
 CC=		clang
-CFLAGS=	-O2 -fno-strict-aliasing -Wall -Wextra
-#CFLAGS=	-O0
-CFLAGSLIB=	-target x86_64-pc-windows-msvc -shared -fuse-ld=lld -nostdlib
+CFLAGS=		-O2 -fno-strict-aliasing -Wall -Wextra -std=c17
+CFLAGBIN=
+CFLAGSLIB=	-shared -fPIC 
 
-LIB=	/usr/local/lib/brine
-BIN=	/usr/local/bin
+LIBDIR=	/usr/local/lib/brine
+BINDIR=	/usr/local/bin
 
 BINSRCS=	loader/main.c loader/loader.c 
+
+BINOBJ=	main.o loader.o
+
+LIBS=	test.dll.so
 OUT=	out
 
-all:	brine
+all:	brine $(LIBS)
 
-brine: object 
-	$(CC) $(CFLAGS) -o brine main.o loader.o
+brine: bin_object
+	$(CC) $(CFLAGS) $(CFLAGBIN) -o brine $(BINOBJ)
 
-object: $(BINSRCS)
-	$(CC) $(CFLAGS) -c $(BINSRCS)
+bin_object: $(BINSRCS)
+	$(CC) $(CFLAGS) $(CFLAGBIN) -c $(BINSRCS)
 
-test.dll: lib/test.c
-	mkdir -p out
-	$(CC) $(CFLAGSLIB) -o test.dll lib/test.c
-
-test.exe:
-	$(CC) --target=x86_64-pc-windows-gnu loader/test.asm -o loader/test.exe
+test.dll.so: lib/test.c
+	$(CC) $(CFLAGS) $(CFLAGSLIB) lib/test.c -o test.dll.so
 
 clean:
 	rm -f *.o .depend*
 
 install: brine
-	mkdir -p $(LIB)
-	cp brine /usr/local/bin
+	mkdir -p $(LIBDIR)
+	cp brine $(BINDIR)
+	cp $(LIBS) $(LIBDIR)
 
-uninstall: $(BIN)/brine $(LIB)
-	rm -rf $(BIN)/brine $(LIB)
+uninstall: $(BINDIR)/brine $(LIBDIR)
+	rm -rf $(BINDIR)/brine $(LIBDIR)

@@ -15,6 +15,7 @@
 #define IMAGE_FILE_MACHINE_I386 0x14c
 #define IMAGE_FILE_EXECUTABLE 0x0002
 #define IMAGE_FILE_DLL 0x2000
+#define IMAGE_REL_BASED_DIR64 10
 
 static const char *lib_dir = "/usr/local/lib/brine/";
 
@@ -39,8 +40,8 @@ struct coff_header {
 };
 
 struct data_directory {
-    uint16_t virtual_address;
-    uint16_t size;
+    uint32_t virtual_address;
+    uint32_t size;
 };
 
 struct pe32_optional {
@@ -79,7 +80,7 @@ struct pe32_optional {
     uint32_t number_of_rva_and_sizes;
 
     //data directory
-    struct data_directory dir[16];
+    struct data_directory data_directory[16];
 } __attribute__((packed));
 
 struct pe32p_optional {
@@ -117,7 +118,7 @@ struct pe32p_optional {
     uint32_t number_of_rva_and_sizes;
 
     // data directory
-    struct data_directory dir[16];
+    struct data_directory data_directory[16];
 } __attribute__((packed));
 
 struct section_table {
@@ -133,15 +134,15 @@ struct section_table {
     uint32_t characteristics;
 };
 
-struct import_descriptor {
-    uint32_t original_first_thunk;
+struct import_descriptor_table {
+    uint32_t ilt_rva;
     uint32_t time_date_stamp;
     uint32_t forwarder_chain;
-    uint32_t name;
-    uint32_t first_thunk;
+    uint32_t name_rva;
+    uint32_t iat_rva;
 };
 
-struct export_descriptor {
+struct export_descriptor_table {
     uint32_t export_flags;
     uint32_t time_date_stamp;
     uint16_t major_version;
@@ -160,6 +161,11 @@ struct eat {
     uint32_t forwarder_rva;
 };
 
+struct base_relocation_block {
+    uint32_t page_rva;
+    uint32_t block_size;
+};
+
 struct pe {
     uint16_t mz_sig;
     uint32_t *pe_sig;
@@ -173,8 +179,10 @@ struct pe {
 };
 
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
-uint8_t *load_section(uint8_t *source, uint32_t limit, uint8_t *destination, int prot);
+int load_section(uint8_t *source, uint32_t limit, uint8_t *destination, int prot);
 uint8_t *load_sections(uint8_t *raw_file, struct pe *pe);
+struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
+int base_relocation(uint8_t *mapped_file, struct pe *pe, uint64_t delta);
 
 struct pe *parse(int fd, uint8_t **file, struct stat *sb, int image_type);
 
