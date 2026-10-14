@@ -65,15 +65,6 @@ struct section_table *get_section(struct section_table *table, uint16_t tables_c
     return NULL;
 }
 
-int load_section(uint8_t *source, uint32_t limit, uint8_t *destination, int prot) { 
-    memcpy(destination, source, limit);
-    /*uint32_t aligned_limit = (limit + 4095) & ~4095;
-    if (mprotect(destination, aligned_limit, prot) < 0)
-        return -1;*/
-
-    return 0;
-}
-
 uint8_t *load_sections(uint8_t *raw_file, struct pe *pe) {
     uint32_t size = 0;
     uint32_t size_of_headers = 0;
@@ -86,17 +77,12 @@ uint8_t *load_sections(uint8_t *raw_file, struct pe *pe) {
         size_of_headers = pe->optional.pe32p->size_of_headers;
     }
 
-    uint8_t *mapped_file = mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON | MAP_PRIVATE, -1, 0);
+    uint8_t *mapped_file = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
     if (mapped_file == MAP_FAILED)
         return NULL;
     memcpy(mapped_file, raw_file, size_of_headers);
     for (uint32_t i = 0; i < pe->coff->number_of_sections; i++) {
-        int prot = PROT_READ | PROT_WRITE;
-        if (strncmp((const char *)pe->section_table[i].name, ".text", 8) == 0)
-            prot |= PROT_EXEC; 
-
-        if (load_section(raw_file + pe->section_table[i].pointer_to_raw_data, pe->section_table[i].size_of_raw_data, mapped_file + pe->section_table[i].virtual_address, prot) < 0)
-            return NULL;
+        memcpy(mapped_file + pe->section_table[i].virtual_address, raw_file + pe->section_table[i].pointer_to_raw_data, pe->section_table[i].size_of_raw_data);
     }
     return mapped_file;
 }
@@ -185,52 +171,64 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
         uint32_t idt_rva = pe->optional.pe32p->data_directory[1].virtual_address;
 
         struct import_descriptor_table *idt = (struct import_descriptor_table *)(mapped_file + idt_rva);
+        for (int d = 0; idt[d].name_rva != 0; d++) {
 
+            uint32_t lookup_rva = 0;
+            if (idt[d].ilt_rva != 0)
+                lookup_rva = idt[d].ilt_rva;
+            else
+                lookup_rva = idt[d].iat_rva;
+            
+            uint64_t *ILT = (uint64_t *)(mapped_file + lookup_rva);
+            uint64_t *IAT = (uint64_t *)(mapped_file + idt[d].iat_rva);
 
-        //uint64_t *ILT = (uint64_t *)(mapped_file + idt->ilt_rva);
-        uint32_t lookup_rva = 0;
-        if (idt->ilt_rva != 0)
-            lookup_rva = idt->ilt_rva;
-        else
-            lookup_rva = idt->iat_rva;
-        
-        uint64_t *ILT = (uint64_t *)(mapped_file + lookup_rva);
-        uint64_t *IAT = (uint64_t *)(mapped_file + idt->iat_rva);
+            for (int i = 0; ILT[i] != 0; i++) {
+                uint64_t ordinal = ILT[i] & 0x8000000000000000ULL;
 
-        for (int i = 0; ILT[i] != 0; i++) {
-            uint64_t ordinal = ILT[i] & 0x8000000000000000ULL;
+                if (ordinal) {
 
-            if (ordinal) {
-
-            }
-            else {
-                uint32_t hint_table_rva = ILT[i] & 0x7FFFFFFF;
-                uint8_t *hint_table = mapped_file + hint_table_rva;
-                char *name = (char *)(hint_table + 2);
-                
-                char lib_path[MAXPATHLEN];
-                
-                long path_written = snprintf(lib_path, sizeof(lib_path), "%s%s.so", lib_dir, (char *)(mapped_file + idt->name_rva));
-
-                if (path_written >= (long)sizeof(lib_path) || path_written < 0)
-                    return -1;
-
-                void *lib = dlopen(lib_path, RTLD_LAZY);
-                if (!lib) {
-                    fprintf(stderr, "error loading %s\n", lib_path);
-                    return -2;
                 }
-                dlerror();
-                void *func = dlsym(lib, name);
+                else {
+                    uint32_t hint_table_rva = ILT[i] & 0x7FFFFFFF;
+                    uint8_t *hint_table = mapped_file + hint_table_rva;
+                    char *name = (char *)(hint_table + 2);
+                    char lib_path[MAXPATHLEN];
+                    
+                    long path_written = snprintf(lib_path, sizeof(lib_path), "%s%s.so", lib_dir, (char *)(mapped_file + idt[d].name_rva));
 
-                char *error;
-                if ((error = dlerror()) != NULL) {
-                    fprintf(stderr, "error finding function %s\n", name);
-                    return -3;
+                    printf("name: %s in %s\n", name, lib_path);
+
+                    if (path_written >= (long)sizeof(lib_path) || path_written < 0)
+                        return -1;
+
+                    void *lib = dlopen(lib_path, RTLD_LAZY | RTLD_DEEPBIND);
+                    if (!lib) {
+                        fprintf(stderr, "error loading %s\n", lib_path);
+                        return -2;
+                    }
+                    dlerror();
+                    /* we can let a windows application use malloc, calloc, realloc, free, 
+                     * strlen, strcmp, memcpy, memset, whole math.h, fopen, 
+                     * fread, fseek, fwrite, fclose from FreeBSD libc*/
+                    void *func = dlsym(lib, name);
+
+                    char *error;
+                    if ((error = dlerror()) != NULL) {
+                        fprintf(stderr, "error finding function %s\n", name);
+                        return -3;
+                    }
+                    
+                    Dl_info info = {0};
+
+                    int result = dladdr(func, &info);
+
+                    if (result != 0) {
+                        printf("resolved in: %s\n", info.dli_fname);
+                    }
+
+                    IAT[i] = (uint64_t)func;
+                    *count += 1;
                 }
-
-                IAT[i] = (uint64_t)func;
-                *count += 1;
             }
         }
     }
@@ -271,5 +269,23 @@ int base_relocation(uint8_t *mapped_file, struct pe *pe, uint64_t delta) {
         }
     }
 
+    return 0;
+}
+
+int mprotect_sections(struct pe *pe, uint8_t *mapped_file) {
+    for (int i = 0; i < pe->coff->number_of_sections; i++) {
+        struct section_table section = pe->section_table[i];
+        if (strncmp((const char *)pe->section_table[i].name, ".rdata", 8) == 0 | strncmp((const char *)pe->section_table[i].name, ".reloc", 8) == 0) {
+            if (mprotect(mapped_file + section.virtual_address, section.virtual_size, PROT_READ) < 0) {
+                fprintf(stderr, "failed to mprotect %s to RO\n", section.name);
+                return -1;
+            }
+            else if (strncmp((const char *)pe->section_table[i].name, ".text", 8) == 0) {
+                fprintf(stderr, "failed to mprotect %s to RX\n", section.name);
+                return -1;
+            }
+        }
+
+    }
     return 0;
 }

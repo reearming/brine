@@ -179,10 +179,10 @@ struct pe {
 };
 
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
-int load_section(uint8_t *source, uint32_t limit, uint8_t *destination, int prot);
 uint8_t *load_sections(uint8_t *raw_file, struct pe *pe);
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
 int base_relocation(uint8_t *mapped_file, struct pe *pe, uint64_t delta);
+int mprotect_sections(struct pe *pe, uint8_t *mapped_file);
 
 struct pe *parse(int fd, uint8_t **file, struct stat *sb, int image_type);
 

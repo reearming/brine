@@ -62,26 +62,10 @@ int main(int argc, char *argv[]) {
         
         if (base_relocation(mapped_file, pe, reloc_delta) < 0) {
             fprintf(stderr, "failed to base relocation\n");
-        }
-
-        if (mprotect(mapped_file + reloc->virtual_address, reloc->virtual_size, PROT_READ) < 0) {
-            fprintf(stderr, "failed to mprotect .reloc to RO\n");
-            goto unmap;
-        }
+        } 
     }
 
-    struct section_table *rdata = get_section(pe->section_table, pe->coff->number_of_sections, ".rdata");
-    if (rdata != NULL)
-    {
-        if (mprotect(mapped_file + rdata->virtual_address, rdata->virtual_size, PROT_READ) < 0) {
-            fprintf(stderr, "failed to mprotect .rdata to RO\n");
-            goto unmap;
-        }
-    } 
-
-    struct section_table *text = get_section(pe->section_table, pe->coff->number_of_sections, ".text");
-    if (mprotect(mapped_file + text->virtual_address, text->virtual_size, PROT_READ | PROT_EXEC) < 0) {
-        fprintf(stderr, "failed to mprotect .text to RX\n");
+    if (mprotect_sections(pe, mapped_file) < 0) {
         goto unmap;
     }
 

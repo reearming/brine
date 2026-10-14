@@ -1,36 +1,63 @@
 CC=		clang
 CFLAGS=		-O2 -fno-strict-aliasing -Wall -Wextra -std=c17
 CFLAGBIN=
-CFLAGSLIB=	-shared -fPIC 
+CFLAGSLIB=	-shared -fPIC -fvisibility=hidden
 
-LIBDIR=	/usr/local/lib/brine
-BINDIR=	/usr/local/bin
+LIBDIR=		usr/local/lib/brine
+BINDIR=		usr/local/bin
+OUT=		out
+PREFIX=		/
 
-BINSRCS=	loader/main.c loader/loader.c 
+BINSRCS=	loader/main.c loader/loader.c
+BINOBJ=		${BINSRCS:T:R:S/$/.o/}
 
-BINOBJ=	main.o loader.o
+LIBS=	api-ms-win-crt-stdio-l1-1-0.dll.so \
+		api-ms-win-crt-runtime-l1-1-0.dll.so \
+		api-ms-win-crt-locale-l1-1-0.dll.so \
+		api-ms-win-crt-heap-l1-1-0.dll.so \
+		api-ms-win-crt-private-l1-1-0.dll.so \
+		api-ms-win-crt-string-l1-1-0.dll.so \
+		KERNEL32.dll.so \
 
-LIBS=	test.dll.so
-OUT=	out
+.PATH: loader lib lib/win-crt-stdio lib/win-crt-runtime lib/win-crt-locale lib/win-crt-heap lib/win-crt-private lib/win-crt-string lib/KERNEL32
 
-all:	brine $(LIBS)
+.PHONY: all clean install uninstall
 
-brine: bin_object
-	$(CC) $(CFLAGS) $(CFLAGBIN) -o brine $(BINOBJ)
+all:	${OUT} brine ${LIBS}
 
-bin_object: $(BINSRCS)
-	$(CC) $(CFLAGS) $(CFLAGBIN) -c $(BINSRCS)
+${OUT}:
+	mkdir -p ${OUT}
 
-test.dll.so: lib/test.c
-	$(CC) $(CFLAGS) $(CFLAGSLIB) lib/test.c -o test.dll.so
+brine: ${BINOBJ}
+	${CC} ${CFLAGS} ${CFLAGBIN} -o brine ${BINOBJ}
+
+.SUFFIXES: .c .o
+.c.o:
+	${CC} ${CFLAGS} ${CFLAGBIN} -c ${.IMPSRC} -o ${.TARGET}
+
+
+.NOTPARALLEL:
+api-ms-win-crt-stdio-l1-1-0.dll.so: api-ms-win-crt-stdio-l1-1-0.c
+api-ms-win-crt-runtime-l1-1-0.dll.so: api-ms-win-crt-runtime-l1-1-0.c
+api-ms-win-crt-locale-l1-1-0.dll.so: api-ms-win-crt-locale-l1-1-0.c
+api-ms-win-crt-heap-l1-1-0.dll.so: api-ms-win-crt-heap-l1-1-0.c
+api-ms-win-crt-private-l1-1-0.dll.so: api-ms-win-crt-private-l1-1-0.c
+api-ms-win-crt-string-l1-1-0.dll.so: api-ms-win-crt-string-l1-1-0.c
+KERNEL32.dll.so: KERNEL32.c
+
+${LIBS}:
+	${CC} ${CFLAGS} ${CFLAGSLIB} ${.ALLSRC} -o ${.TARGET}
 
 clean:
-	rm -f *.o .depend*
+	rm -f *.o .depend* brine *.dll.so
+	rm -rf ${OUT}
 
 install: brine
-	mkdir -p $(LIBDIR)
-	cp brine $(BINDIR)
-	cp $(LIBS) $(LIBDIR)
+	install -d ${PREFIX}${LIBDIR}
+	install -m 755 brine ${PREFIX}${BINDIR}
+	install -m 755 ${LIBS} ${PREFIX}${LIBDIR}
 
-uninstall: $(BINDIR)/brine $(LIBDIR)
-	rm -rf $(BINDIR)/brine $(LIBDIR)
+uninstall:
+	rm -f ${PREFIX}${BINDIR}/brine
+	rm -rf ${PREFIX}${LIBDIR}
+
