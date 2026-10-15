@@ -1,12 +1,14 @@
 #include "../winerror.h"
 #include <stdio.h>
+#include "../winnt.h"
+#include <stdlib.h>
 
 int malloc_mode;
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-void* memcpy(void* dst, const void* src, size_t n) {
+void *WIN_CDECL win_memcpy(void* dst, const void* src, size_t n) {
     return __builtin_memcpy(dst, src, n);
 }
 
+__attribute__((alias("win_memcpy"), visibility("default"))) 
+void *memcpy(void* dst, const void* src, size_t n);
 

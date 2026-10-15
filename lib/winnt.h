@@ -1,8 +1,15 @@
 #ifndef WINNT_H
 #define WINNT_H
 #include <stdalign.h>
+#include <stddef.h>
 #include <stdint.h>
 #define EXCEPTION_MAXIMUM_PARAMETERS 15
+
+#ifdef __x86_64__
+#define WIN_CDECL __attribute__((ms_abi, visibility("default")))
+#else
+#define WIN_CDECL __attribute__((cdecl, visibility("default")))
+#endif
 
 typedef uint32_t DWORD;
 typedef uint16_t WORD;
@@ -13,6 +20,8 @@ typedef uint64_t DWORD64, *PDWORD64;
 typedef uint64_t ULONGLONG;
 typedef void VOID, *PVOID, *LPVOID;
 typedef uintptr_t ULONG_PTR;
+typedef size_t SIZE_T;
+typedef const void *LPCVOID;
 
 
 typedef struct _M128A {
@@ -122,5 +131,25 @@ typedef struct _EXCEPTION_POINTERS {
   PEXCEPTION_RECORD ExceptionRecord;
   PCONTEXT          ContextRecord;
 } EXCEPTION_POINTERS, *PEXCEPTION_POINTERS;
+
+typedef struct _MEMORY_BASIC_INFORMATION {
+  PVOID  BaseAddress;
+  PVOID  AllocationBase;
+  DWORD  AllocationProtect;
+  WORD   PartitionId;
+  SIZE_T RegionSize;
+  DWORD  State;
+  DWORD  Protect;
+  DWORD  Type;
+} MEMORY_BASIC_INFORMATION, *PMEMORY_BASIC_INFORMATION;
+
+struct _exception {
+    int type;
+    char* name;
+    double arg1;
+    double arg2;
+    double retval;
+};
+typedef int (__attribute__((ms_abi)) * _HANDLE_MATH_ERROR)(struct _exception *);
 
 #endif

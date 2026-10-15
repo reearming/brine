@@ -13,7 +13,8 @@
 #include <dlfcn.h>
 
 static int fd;
-static struct stat sb;
+struct stat sb;
+extern int debug;
 
 uint16_t try_MZ() {
     uint16_t mz_sig;
@@ -87,7 +88,7 @@ uint8_t *load_sections(uint8_t *raw_file, struct pe *pe) {
     return mapped_file;
 }
 
-struct pe *parse(int f, uint8_t **file, struct stat *sb_arg, int image_type) {
+struct pe *parse(int f, uint8_t **file, int image_type) {
     fd = f; 
 
     uint16_t mz_sig = try_MZ();
@@ -143,8 +144,6 @@ struct pe *parse(int f, uint8_t **file, struct stat *sb_arg, int image_type) {
     struct section_table *section_table = parse_section_table(pe, optional_ptr);
     pe->section_table = section_table; 
     
-    *sb_arg = sb;
-
     return pe;
 }
 
@@ -196,8 +195,6 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
                     
                     long path_written = snprintf(lib_path, sizeof(lib_path), "%s%s.so", lib_dir, (char *)(mapped_file + idt[d].name_rva));
 
-                    printf("name: %s in %s\n", name, lib_path);
-
                     if (path_written >= (long)sizeof(lib_path) || path_written < 0)
                         return -1;
 
@@ -207,9 +204,7 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
                         return -2;
                     }
                     dlerror();
-                    /* we can let a windows application use malloc, calloc, realloc, free, 
-                     * strlen, strcmp, memcpy, memset, whole math.h, fopen, 
-                     * fread, fseek, fwrite, fclose from FreeBSD libc*/
+                    /* we can let a windows application use any function with no args from FreeBSD libc*/
                     void *func = dlsym(lib, name);
 
                     char *error;
@@ -218,12 +213,16 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
                         return -3;
                     }
                     
-                    Dl_info info = {0};
+                    if (debug) {
+                        Dl_info info = {0};
 
-                    int result = dladdr(func, &info);
+                        int result = dladdr(func, &info);
 
-                    if (result != 0) {
-                        printf("resolved in: %s\n", info.dli_fname);
+                        if (result != 0) {
+                            //if (strstr(info.dli_fname, "libc")) {
+                                printf("function %s resolved in: %s, requested in: %s\n", name, info.dli_fname, lib_path);
+                            //}
+                        }
                     }
 
                     IAT[i] = (uint64_t)func;
@@ -280,12 +279,14 @@ int mprotect_sections(struct pe *pe, uint8_t *mapped_file) {
                 fprintf(stderr, "failed to mprotect %s to RO\n", section.name);
                 return -1;
             }
-            else if (strncmp((const char *)pe->section_table[i].name, ".text", 8) == 0) {
+        }
+        else if (strncmp((const char *)pe->section_table[i].name, ".text", 8) == 0) {
+            if (mprotect(mapped_file + section.virtual_address, section.virtual_size, PROT_READ | PROT_EXEC) < 0) {
                 fprintf(stderr, "failed to mprotect %s to RX\n", section.name);
-                return -1;
+                return -2;
             }
         }
-
+        
     }
     return 0;
 }

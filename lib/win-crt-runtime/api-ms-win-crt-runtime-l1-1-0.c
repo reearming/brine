@@ -1,21 +1,22 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "api-ms-win-crt-runtime-l1-1-0.h"
-
+#include "../winnt.h"
 
 int _argc;
 int _argv;
 
-__attribute__((visibility("default"))) 
-int *__p___argc(void) {
+int WIN_CDECL *__p___argc(void) {
+    printf("[ STUB ] function %s coming soon", __func__);
     return &_argc;
 }
-__attribute__((visibility("default"))) 
-int *__p___argv(void) {
+
+int WIN_CDECL *__p___argv(void) {
+    printf("[ STUB ] function %s coming soon", __func__);
     return &_argv;
 }
 
-__attribute__((visibility("default"))) 
-void _cexit(void) {
+void WIN_CDECL _cexit(void) {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) { }
 
@@ -23,26 +24,22 @@ void _cexit(void) {
 
 }
 
-__attribute__((visibility("default"))) 
-int __cdecl _configure_narrow_argv(_crt_argv_mode mode) {
+int WIN_CDECL _configure_narrow_argv(_crt_argv_mode mode) {
     printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 
-__attribute__((visibility("default"))) 
-int __cdecl _crt_atexit(void (__cdecl *function)(void)) {
+int WIN_CDECL _crt_atexit(void (__cdecl *function)(void)) {
     printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 
-__attribute__((visibility("default"))) 
-int __cdecl _initialize_narrow_environment(void) {
+int WIN_CDECL _initialize_narrow_environment(void) {
     printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 
-__attribute__((visibility("default"))) 
-int __cdecl _initterm(_PVFV* pfbegin, _PVFV* pfend) {
+int WIN_CDECL _initterm(_PVFV* pfbegin, _PVFV* pfend) {
     while (pfbegin < pfend) {
         if (pfbegin != 0)
             (**pfbegin)();
@@ -51,8 +48,7 @@ int __cdecl _initterm(_PVFV* pfbegin, _PVFV* pfend) {
     return 0;
 } 
 
-__attribute__((visibility("default"))) 
-int __cdecl _initterm_e(_PIFV* pfbegin, _PIFV* pfend)
+int WIN_CDECL _initterm_e(_PIFV* pfbegin, _PIFV* pfend)
 {
     while (pfbegin < pfend)
     {
@@ -69,29 +65,29 @@ int __cdecl _initterm_e(_PIFV* pfbegin, _PIFV* pfend)
     return 0;
 }
 
-__attribute__((visibility("default"))) 
-int __cdecl _seh_filter_dll(unsigned long exception_num, exception_pointers* exception_ptr) {
+int WIN_CDECL _seh_filter_dll(unsigned long exception_num, exception_pointers* exception_ptr) {
     printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 
-__attribute__((visibility("default"))) 
-int __cdecl _seh_filter_exe(unsigned long exception_num, exception_pointers* exception_ptr) {
+int WIN_CDECL _seh_filter_exe(unsigned long exception_num, exception_pointers* exception_ptr) {
     printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 
-__attribute__((visibility("default"))) 
-void __cdecl _set_app_type(_crt_app_type appType) {
+void WIN_CDECL _set_app_type(_crt_app_type appType) {
     printf("[ STUB ] function %s coming soon\n", __func__);
 }
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-_invalid_parameter_handler _set_invalid_parameter_handler(_invalid_parameter_handler pNew) {
+_invalid_parameter_handler WIN_CDECL _set_invalid_parameter_handler(_invalid_parameter_handler pNew) {
     printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 
-    
+extern void sys_exit(int status) __asm__("exit");
+void WIN_CDECL win_exit(int status) {
+    sys_exit(status);
+}
+__attribute__((alias("win_exit"), visibility("default")))
+void exit(int status);
 

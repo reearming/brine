@@ -176,6 +176,7 @@ struct pe {
     } optional;
     struct section_table *section_table;
     uint16_t optional_magic;
+    uint8_t debug;
 };
 
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
@@ -184,7 +185,7 @@ struct section_table *get_section(struct section_table *table, uint16_t tables_c
 int base_relocation(uint8_t *mapped_file, struct pe *pe, uint64_t delta);
 int mprotect_sections(struct pe *pe, uint8_t *mapped_file);
 
-struct pe *parse(int fd, uint8_t **file, struct stat *sb, int image_type);
+struct pe *parse(int fd, uint8_t **file, int image_type);
 
 int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count);
 

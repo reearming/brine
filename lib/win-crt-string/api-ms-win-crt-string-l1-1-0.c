@@ -1,10 +1,10 @@
 #include "../winerror.h"
 #include <stdio.h>
+#include "../winnt.h"
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-size_t strlen(const char *str) {
+size_t WIN_CDECL win_strlen(const char *str) {
     return __builtin_strlen(str);
 }
 
-
+__attribute__((alias("win_strlen"), visibility("default")))
+size_t strlen(const char *str);

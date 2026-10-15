@@ -11,41 +11,31 @@
 static thread_local uint32_t last_error;
 LPTOP_LEVEL_EXCEPTION_FILTER unhandled_exception_filter;
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-uint32_t GetLastError(void) {
+uint32_t WIN_CDECL GetLastError(void) {
     return last_error;
 }
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-void SetLastError(uint32_t error) {
+void WIN_CDECL SetLastError(uint32_t error) {
     last_error = error;
 }
 
-int32_t UnhandledExceptionFilter(EXCEPTION_POINTERS *exception_info) {
+int32_t WIN_CDECL UnhandledExceptionFilter(EXCEPTION_POINTERS *exception_info) {
     printf("[ STUB ] function %s coming soon", __func__);
     return 0;
 }
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-LPTOP_LEVEL_EXCEPTION_FILTER SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER lp_top_level_exception_filter) {
+LPTOP_LEVEL_EXCEPTION_FILTER WIN_CDECL SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER lp_top_level_exception_filter) {
     LPTOP_LEVEL_EXCEPTION_FILTER previous_unhandled_exception_filter = unhandled_exception_filter;
     unhandled_exception_filter = lp_top_level_exception_filter;
     return previous_unhandled_exception_filter;
     return NULL;
 }
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-void Sleep(uint32_t time) {
+void WIN_CDECL Sleep(uint32_t time) {
     usleep(time * 1000);
 }
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-int VirtualProtect(void *lp_address, size_t dw_size, uint32_t fl_new_protect, uint32_t *lpfl_old_protect) {
+int WIN_CDECL VirtualProtect(void *lp_address, size_t dw_size, uint32_t fl_new_protect, uint32_t *lpfl_old_protect) {
     if (!lp_address || dw_size == 0) {
         return 0;
     }
@@ -89,4 +79,12 @@ int VirtualProtect(void *lp_address, size_t dw_size, uint32_t fl_new_protect, ui
 
     return 0;
 }
+
+
+
+size_t WIN_CDECL VirtualQuery(const void *lp_address, MEMORY_BASIC_INFORMATION *lpBuffer, size_t dwLength) {
+    printf("[ STUB ] function %s coming soon", __func__);
+    return 0;
+}
+
 

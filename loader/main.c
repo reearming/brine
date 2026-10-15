@@ -1,25 +1,63 @@
 #include <stdio.h>
 #include <fcntl.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdint.h>
 #include "loader.h"
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <machine/sysarch.h>
+
+uint8_t debug = 0;
+extern struct stat sb;
+
+char *parse_args(int argc, char *argv[]) {
+    char *exefile = NULL;
+    uint8_t is_flag = 0;
+    for (int i = 1; i < argc; i++) {
+        if (argv[i][0] == '-') {
+            switch (argv[i][1]) {
+                case '-':
+                    if (strcmp(argv[i], "--debug") == 0)
+                        debug = 1;
+                    break;
+                case 'd':
+                    debug = 1;
+                    break;
+                default:
+                    fprintf(stderr, "invalid argument '%s'\n", argv[i]);
+                    return NULL;
+            }
+        }
+        else if (is_flag) {
+            
+        }
+        else {
+            exefile = argv[i];
+        }
+    }
+
+    return exefile;
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "no arguments provided\n");
         return 1;
-    } 
-    int fd = open(argv[1], O_RDONLY);
+    }
+    char *exefile = parse_args(argc, argv);
+    if (exefile == NULL) {
+        exit(1);
+    }
+
+    int fd = open(exefile, O_RDONLY);
     if (fd < 0) {
         fprintf(stderr, "can't open the file\n");
         exit(1);
     }
     uint8_t *raw_file = 0;
-    struct stat sb;
-    struct pe *pe = parse(fd, &raw_file, &sb, IMAGE_FILE_EXECUTABLE);
+    struct pe *pe = parse(fd, &raw_file, IMAGE_FILE_EXECUTABLE);
 
     uint32_t entry_point = 0;
     uint32_t image_size = 0;
@@ -59,14 +97,28 @@ int main(int argc, char *argv[]) {
     if (reloc != NULL)
     {
         uint64_t reloc_delta = (uint64_t)mapped_file - base_image;
-        
-        if (base_relocation(mapped_file, pe, reloc_delta) < 0) {
-            fprintf(stderr, "failed to base relocation\n");
-        } 
+        if (reloc_delta != 0) {
+            if (base_relocation(mapped_file, pe, reloc_delta) < 0) {
+                fprintf(stderr, "failed to base relocation\n");
+            } 
+        }
     }
-
+    
     if (mprotect_sections(pe, mapped_file) < 0) {
         goto unmap;
+    }
+    
+    if (pe->optional_magic == PE32) {
+
+    }
+    else {
+        uint8_t *teb = malloc(0x4000);
+        uint8_t *peb = malloc(0x2000);
+        *(teb + 0x30) = (uint64_t)teb;
+        *(teb + 0x60) = (uint64_t)peb;
+        if (amd64_set_gsbase(teb) != 0) {
+            fprintf(stderr, "failed to set gs base\n");
+        }
     }
 
     uint8_t *entry = mapped_file + entry_point;

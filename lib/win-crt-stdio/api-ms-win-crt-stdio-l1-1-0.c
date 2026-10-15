@@ -1,13 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "api-ms-win-crt-stdio-l1-1-0.h"
+#include "../winnt.h"
 
 static int _commode;
 static int _fmode;
 
-__attribute__((visibility("default")))
-__attribute__((ms_abi))
-void* __acrt_iob_func(unsigned index) {
+void* WIN_CDECL __acrt_iob_func(unsigned index) {
     switch (index) {
         case 0: return stdin;
         case 1: return stdout;
@@ -16,23 +15,33 @@ void* __acrt_iob_func(unsigned index) {
     }
 }
 
-__attribute__((visibility("default")))
-int *__p__commode(void) {
+int WIN_CDECL *__p__commode(void) {
+    printf("[ STUB ] function %s coming soon", __func__);
     return &_commode;
 }
 
-__attribute__((visibility("default")))
-int *__p__fmode(void) {
+int WIN_CDECL *__p__fmode(void) {
+    printf("[ STUB ] function %s coming soon", __func__);
     return &_fmode;
 }
 
-__attribute__((visibility("default"))) 
-__attribute__((ms_abi))
-int __stdio_common_vfprintf(const uint64_t options, const FILE *stream, const char *format, _locale_t const locale, const va_list arglist) {
+int WIN_CDECL __stdio_common_vfprintf(const uint64_t options, const FILE *stream, const char *format, _locale_t const locale, const va_list arglist) {
     //fprintf((FILE *)stream, format);
     printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 
+extern int sys_fflush(FILE *stream) __asm__("fflush");
+int WIN_CDECL win_fflush(FILE *stream) {
+    return sys_fflush(stream);
+}   
+__attribute__((alias("win_fflush"), visibility("default")))
+int fflush(FILE *stream);
 
+extern int sys_setvbuf(FILE *stream, char *restrict buf, int modes, size_t n) __asm__("setvbuf");
+int WIN_CDECL win_setvbuf(FILE *restrict stream, char *restrict buf, int modes, size_t n) {
+    return sys_setvbuf(stream, buf, modes, n);
+}
+__attribute__((alias("win_setvbuf"), visibility("default")))
+int setvbuf(FILE *restrict stream, char *restrict buf, int modes, size_t n);
 
