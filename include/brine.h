@@ -25,10 +25,11 @@ typedef struct brine_api {
     int *(*get_argc)();
     char **(*get_argv)();
     void *(*host_malloc)(size_t);
-    size_t (*host_strlen)(const char *);
-    void *(*host_memcpy)(void *, const void *, size_t);
-    int (*host_setvbuf)(FILE *, char *, int, size_t);
+    size_t (*host_strlen)(const char *s);
+    void *(*host_memcpy)(void *dst, const void *src, size_t n);
+    int (*host_setvbuf)(FILE *stream, char *buf, int modes, size_t n);
     void (*host_exit)(int status);
+    int (*host_fflush)(FILE *stream);
 } brine_api;
 
 int set_sys_gs();

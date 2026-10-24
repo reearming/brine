@@ -40,11 +40,11 @@ int __stdio_common_vfprintf(const uint64_t options, const FILE *stream, const ch
     return 0;
 }
 
-extern int sys_fflush(FILE *stream) __asm__("fflush");
 WIN_CDECL
 int win_fflush(FILE *stream) {
-    return sys_fflush(stream);
+    return api->host_fflush(stream);
 }   
+
 __attribute__((alias("win_fflush"), visibility("default")))
 int fflush(FILE *stream);
 
