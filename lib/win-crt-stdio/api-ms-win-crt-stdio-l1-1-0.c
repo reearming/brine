@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include "api-ms-win-crt-stdio-l1-1-0.h"
 #include "../winnt.h"
+#include <stdlib.h>
+#include <dlfcn.h>
 
 static int _commode;
 static int _fmode;
@@ -38,10 +40,13 @@ int WIN_CDECL win_fflush(FILE *stream) {
 __attribute__((alias("win_fflush"), visibility("default")))
 int fflush(FILE *stream);
 
-extern int sys_setvbuf(FILE *stream, char *restrict buf, int modes, size_t n) __asm__("setvbuf");
-int WIN_CDECL win_setvbuf(FILE *restrict stream, char *restrict buf, int modes, size_t n) {
-    return sys_setvbuf(stream, buf, modes, n);
+int WIN_CDECL win_setvbuf(FILE *stream, char *buf, int mode, size_t n)
+{
+    system_setvbuf host = (system_setvbuf)dlsym(dlopen("libc.so.7", RTLD_LAZY), "setvbuf");
+
+    return host(stream, buf, mode, n);
 }
+
 __attribute__((alias("win_setvbuf"), visibility("default")))
-int setvbuf(FILE *restrict stream, char *restrict buf, int modes, size_t n);
+int setvbuf(FILE *stream, char *buf, int mode, size_t n);
 

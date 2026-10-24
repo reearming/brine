@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/ucontext.h>
 #include <unistd.h>
 #include <stdint.h>
 #include "loader.h"
@@ -8,9 +9,13 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <machine/sysarch.h>
+#include <dlfcn.h>
+#include <sys/param.h>
+
 
 uint8_t debug = 0;
 extern struct stat sb;
+extern const char *brine_lib;
 
 char *parse_args(int argc, char *argv[]) {
     char *exefile = NULL;
@@ -84,10 +89,11 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t dll_count = 0;
-    
+    brine_api *api;
     if (dir[1].size != 0)
     {
-        int dllerr = load_dll(pe, mapped_file, &dll_count);
+        api = load_api();
+        int dllerr = load_dll(pe, mapped_file, &dll_count, api);
         if (dllerr < 0) {
             fprintf(stderr, "failed to load dll\n");
             goto unmap;
@@ -107,17 +113,32 @@ int main(int argc, char *argv[]) {
     if (mprotect_sections(pe, mapped_file) < 0) {
         goto unmap;
     }
-    
-    if (pe->optional_magic == PE32) {
 
+    if (pe->optional_magic == PE32) {
+        
     }
     else {
+        void *gs_base;
+        if (amd64_get_gsbase(&gs_base) != 0) {
+            fprintf(stderr, "amd64_get_gsbase failed\n");
+            goto unmap;
+        }
+
         uint8_t *teb = malloc(0x4000);
         uint8_t *peb = malloc(0x2000);
-        *(teb + 0x30) = (uint64_t)teb;
-        *(teb + 0x60) = (uint64_t)peb;
+        if (teb == NULL || peb == NULL) {
+            fprintf(stderr, "failed to allocate TEB/PEB\n");
+            free(teb);
+            free(peb);
+            goto unmap;
+        }
+
+        *(uint64_t *)(teb + 0x30) = (uint64_t)teb;
+        *(uint64_t *)(teb + 0x60) = (uint64_t)peb;
+
         if (amd64_set_gsbase(teb) != 0) {
             fprintf(stderr, "failed to set gs base\n");
+            goto unmap;
         }
     }
 

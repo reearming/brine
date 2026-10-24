@@ -1,9 +1,16 @@
 #include "../winerror.h"
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "../winnt.h"
+#include "../brine.h"
 
 int malloc_mode;
+
+static brine_api *api;
+void so_init(brine_api *brine_api) {
+    api = brine_api;
+}
 
 int WIN_CDECL _set_new_mode(int new_handler_mode) {
     if (new_handler_mode != 0 && new_handler_mode != 1) {
@@ -17,6 +24,9 @@ int WIN_CDECL _set_new_mode(int new_handler_mode) {
 }
 
 void *WIN_CDECL win_malloc(size_t size) {
+    api->set_sys_gs();
+    printf("we are in %s\n", __func__);
+    api->set_teb_gs();
     return __builtin_malloc(size);
 }
 __attribute__((alias("win_malloc"), visibility("default")))

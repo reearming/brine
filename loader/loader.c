@@ -147,7 +147,7 @@ struct pe *parse(int f, uint8_t **file, int image_type) {
     return pe;
 }
 
-int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
+int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *api) {
     uint16_t optional_magic = pe->optional_magic; 
 
     if (optional_magic == PE32) {
@@ -193,9 +193,9 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
                     char *name = (char *)(hint_table + 2);
                     char lib_path[MAXPATHLEN];
                     
-                    long path_written = snprintf(lib_path, sizeof(lib_path), "%s%s.so", lib_dir, (char *)(mapped_file + idt[d].name_rva));
+                    long path_size = snprintf(lib_path, sizeof(lib_path), "%s%s.so", brine_lib_dir, (char *)(mapped_file + idt[d].name_rva));
 
-                    if (path_written >= (long)sizeof(lib_path) || path_written < 0)
+                    if (path_size >= (long)sizeof(lib_path) || path_size < 0)
                         return -1;
 
                     void *lib = dlopen(lib_path, RTLD_LAZY | RTLD_DEEPBIND);
@@ -227,6 +227,12 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count) {
 
                     IAT[i] = (uint64_t)func;
                     *count += 1;
+
+                    void (*so_init)(brine_api *brine_api) = dlsym(lib, "so_init");
+                    char *init_error;
+                    if ((init_error = dlerror()) == NULL) {
+                        so_init(api);
+                    }
                 }
             }
         }
@@ -289,4 +295,20 @@ int mprotect_sections(struct pe *pe, uint8_t *mapped_file) {
         
     }
     return 0;
+}
+
+brine_api *load_api() {
+    void *brine_so = dlopen(brine_lib, RTLD_LAZY);
+    
+    void (*brine_write_thread)(brine_thread *) = dlsym(brine_so, "brine_write_thread");
+    int (*brine_read_thread)(brine_thread **) = dlsym(brine_so, "brine_read_thread");
+    int (*set_teb_gs)() = dlsym(brine_so, "set_teb_gs");
+    int (*set_sys_gs)() = dlsym(brine_so, "set_teb_gs");
+
+    brine_api *api = malloc(sizeof(struct brine_api));
+    api->thread_write = brine_write_thread;
+    api->thread_read = brine_read_thread;
+    api->set_teb_gs = set_teb_gs;
+    api->set_sys_gs = set_sys_gs;
+    return api;
 }

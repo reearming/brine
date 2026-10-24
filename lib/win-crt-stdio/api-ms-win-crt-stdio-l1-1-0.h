@@ -4,4 +4,6 @@
 
 typedef locale_t _locale_t;
 
+typedef int (*system_setvbuf)(FILE *restrict, char *restrict, int, size_t);
+
 #endif

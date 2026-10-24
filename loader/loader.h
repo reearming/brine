@@ -17,7 +17,8 @@
 #define IMAGE_FILE_DLL 0x2000
 #define IMAGE_REL_BASED_DIR64 10
 
-static const char *lib_dir = "/usr/local/lib/brine/";
+static const char *brine_lib_dir = "/usr/local/lib/brine/";
+static const char *brine_lib = "/usr/local/lib/brine/brine.so";
 
 static inline void exit_unmap(uint8_t *file, struct stat sb) {
     munmap(file, sb.st_size);
@@ -179,6 +180,14 @@ struct pe {
     uint8_t debug;
 };
 
+typedef struct brine_thread brine_thread;
+typedef struct brine_api {
+    void (*thread_write)(brine_thread *);
+    int (*thread_read)(brine_thread **);
+    int (*set_teb_gs)();
+    int (*set_sys_gs)();
+} brine_api;
+
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
 uint8_t *load_sections(uint8_t *raw_file, struct pe *pe);
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
@@ -187,6 +196,8 @@ int mprotect_sections(struct pe *pe, uint8_t *mapped_file);
 
 struct pe *parse(int fd, uint8_t **file, int image_type);
 
-int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count);
+int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *api);
+
+brine_api *load_api();
 
 #endif

@@ -20,9 +20,10 @@ LIBS=	api-ms-win-crt-stdio-l1-1-0.dll.so \
 		KERNEL32.dll.so \
 		api-ms-win-crt-math-l1-1-0.dll.so \
 		api-ms-win-crt-environment-l1-1-0.dll.so \
+		brine.so \
 
 .PATH: loader lib lib/win-crt-stdio lib/win-crt-runtime lib/win-crt-locale lib/win-crt-heap lib/win-crt-private lib/win-crt-string lib/KERNEL32 lib/win-crt-math \
-	lib/win-crt-environment
+	lib/win-crt-environment lib/brine
 
 .PHONY: all clean install uninstall
 
@@ -49,6 +50,7 @@ api-ms-win-crt-string-l1-1-0.dll.so: api-ms-win-crt-string-l1-1-0.c
 KERNEL32.dll.so: KERNEL32.c
 api-ms-win-crt-math-l1-1-0.dll.so: api-ms-win-crt-math-l1-1-0.c
 api-ms-win-crt-environment-l1-1-0.dll.so: api-ms-win-crt-environment-l1-1-0.c
+brine.so: brine.c
 
 ${LIBS}:
 	${CC} ${CFLAGS} ${CFLAGSLIB} ${.ALLSRC} -o ${.TARGET}

@@ -40,6 +40,7 @@ int WIN_CDECL _initialize_narrow_environment(void) {
 }
 
 int WIN_CDECL _initterm(_PVFV* pfbegin, _PVFV* pfend) {
+    printf("we are in %s\n", __func__);
     while (pfbegin < pfend) {
         if (pfbegin != 0)
             (**pfbegin)();
@@ -50,6 +51,7 @@ int WIN_CDECL _initterm(_PVFV* pfbegin, _PVFV* pfend) {
 
 int WIN_CDECL _initterm_e(_PIFV* pfbegin, _PIFV* pfend)
 {
+    printf("we are in %s\n", __func__);
     while (pfbegin < pfend)
     {
         if (*pfbegin != 0)
