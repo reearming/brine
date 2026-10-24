@@ -9,7 +9,6 @@ int main() {
     int b = 2;
     a += b;
     fourfourfour();
-    for (;;) {}
 
     return 0;
 }

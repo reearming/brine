@@ -315,6 +315,7 @@ brine_api *load_api(void *brine_so) {
     size_t (*host_strlen)(const char *) = dlsym(libc, "strlen");
     void *(*host_memcpy)(void *, const void *, size_t) = dlsym(libc, "memcpy");
     int (*host_setvbuf)(FILE *, char *, int, size_t) = dlsym(libc, "setvbuf");
+    void (*host_exit)(int) = dlsym(libc, "exit");
 
     brine_api *api = malloc(sizeof(struct brine_api));
 
@@ -329,5 +330,6 @@ brine_api *load_api(void *brine_so) {
     api->host_strlen = host_strlen;
     api->host_memcpy = host_memcpy;
     api->host_setvbuf = host_setvbuf;
+    api->host_exit = host_exit;
     return api;
 }

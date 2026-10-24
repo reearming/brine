@@ -28,6 +28,7 @@ typedef struct brine_api {
     size_t (*host_strlen)(const char *);
     void *(*host_memcpy)(void *, const void *, size_t);
     int (*host_setvbuf)(FILE *, char *, int, size_t);
+    void (*host_exit)(int status);
 } brine_api;
 
 int set_sys_gs();

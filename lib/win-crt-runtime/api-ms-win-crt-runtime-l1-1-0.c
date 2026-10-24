@@ -114,9 +114,8 @@ _invalid_parameter_handler _set_invalid_parameter_handler(_invalid_parameter_han
     return 0;
 }
 
-extern void sys_exit(int status) __asm__("exit");
 void WIN_CDECL win_exit(int status) {
-    sys_exit(status);
+    api->host_exit(status);
 }
 __attribute__((alias("win_exit"), visibility("default")))
 void exit(int status);
