@@ -1,9 +1,15 @@
-#include "../winnt.h"
+#include "../../include/brine.h"
+#include "../../include/winnt.h"
 #include <stdio.h>
 
-char **_environ;
+char **_environ = NULL;
+extern char **environ;
 
-char WIN_CDECL ***__p__environ() {
-    printf("[ STUB ] function %s coming soon", __func__);
+WIN_CDECL
+char ***__p__environ() {
+    fprintf(stderr, "%s called\n", __func__);
+    if (!_environ) {
+        _environ = environ;
+    }
     return &_environ;
 }

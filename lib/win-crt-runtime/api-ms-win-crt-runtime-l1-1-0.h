@@ -2,9 +2,10 @@
 #define API_MS_WIN_CRT_RUNTIME_L1_1_0_H
 
 #include <stdint.h>
+#include "../../include/brine.h"
 
-typedef void (__cdecl *_PVFV)(void);
-typedef int  (__cdecl *_PIFV)(void);
+typedef void (WIN_ABI *_PVFV)(void);
+typedef int (WIN_ABI *_PIFV)(void);
 
 typedef enum {
     _crt_argv_no_arguments = 0,

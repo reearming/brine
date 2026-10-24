@@ -1,3 +1,5 @@
+#include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
@@ -16,10 +18,12 @@
 uint8_t debug = 0;
 extern struct stat sb;
 extern const char *brine_lib;
+static int __argc = 2;
+static char **__argv;
 
 char *parse_args(int argc, char *argv[]) {
     char *exefile = NULL;
-    uint8_t is_flag = 0;
+    uint8_t is_arg = 1;
     for (int i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {
             switch (argv[i][1]) {
@@ -35,11 +39,16 @@ char *parse_args(int argc, char *argv[]) {
                     return NULL;
             }
         }
-        else if (is_flag) {
+        else if (!is_arg) {
             
         }
         else {
             exefile = argv[i];
+            __argc = argc - i;
+            __argv = &argv[i];
+            if (debug)
+                printf("__argc: %d, __argv: %p, argc: %d, argv: %p\n", __argc, __argv, argc, argv);
+            break;
         }
     }
 
@@ -89,10 +98,14 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t dll_count = 0;
+    void *brine_so = dlopen(brine_lib, RTLD_LAZY);
+    void (*brinelib_init)(int, char **) = dlsym(brine_so, "brinelib_init");
+    brinelib_init(__argc, __argv);
+
     brine_api *api;
     if (dir[1].size != 0)
     {
-        api = load_api();
+        api = load_api(brine_so);
         int dllerr = load_dll(pe, mapped_file, &dll_count, api);
         if (dllerr < 0) {
             fprintf(stderr, "failed to load dll\n");
@@ -114,6 +127,11 @@ int main(int argc, char *argv[]) {
         goto unmap;
     }
 
+    size_t stack_size= 4 * pow(2, 20);
+    uint8_t *stack = mmap(NULL, stack_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    uint64_t *stack_top = (uint64_t *)(stack + stack_size);
+    memset(stack, 0, stack_size);
+
     if (pe->optional_magic == PE32) {
         
     }
@@ -134,19 +152,33 @@ int main(int argc, char *argv[]) {
         }
 
         *(uint64_t *)(teb + 0x30) = (uint64_t)teb;
+        *(uint64_t *)(teb + 0x8) = (uint64_t)stack_top;
         *(uint64_t *)(teb + 0x60) = (uint64_t)peb;
 
         if (amd64_set_gsbase(teb) != 0) {
             fprintf(stderr, "failed to set gs base\n");
             goto unmap;
         }
-    }
+    } 
 
     uint8_t *entry = mapped_file + entry_point;
     
-    typedef void (*entry_t)(void);
-    entry_t run_payload = (entry_t)entry;
-    run_payload();
+    typedef void __attribute__((ms_abi)) (*entry_t)(void);
+    entry_t entry_point_func = (entry_t)entry;
+    //__asm__("movq %%rax, %%rsp" : : "a"());
+    entry_point_func();
+
+    /*__asm__(
+        "movq %%rsp, %%r12\n\t"        
+        "andq $-16, %%rsp\n\t"
+        "subq $32, %%rsp\n\t"
+        
+        "callq *%%rax\n\t"
+        "movq %%r12, %%rsp\n\t"
+        :
+        : "a"(entry)
+        : "r12", "cc", "memory"
+    );*/
 
     munmap(mapped_file, image_size);
     exit_unmap(raw_file, sb);

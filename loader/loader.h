@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include "../include/brine.h"
 
 #define MZ_SIGNATURE 0x5A4D
 #define PE_HEADER_OFFSET 0x3C
@@ -180,14 +181,6 @@ struct pe {
     uint8_t debug;
 };
 
-typedef struct brine_thread brine_thread;
-typedef struct brine_api {
-    void (*thread_write)(brine_thread *);
-    int (*thread_read)(brine_thread **);
-    int (*set_teb_gs)();
-    int (*set_sys_gs)();
-} brine_api;
-
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
 uint8_t *load_sections(uint8_t *raw_file, struct pe *pe);
 struct section_table *get_section(struct section_table *table, uint16_t tables_count, const char *name);
@@ -198,6 +191,6 @@ struct pe *parse(int fd, uint8_t **file, int image_type);
 
 int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *api);
 
-brine_api *load_api();
+brine_api *load_api(void *brine_so);
 
 #endif

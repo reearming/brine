@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <sys/param.h>
 #include <dlfcn.h>
+#include "../include/brine.h"
 
 static int fd;
 struct stat sb;
@@ -204,7 +205,6 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *ap
                         return -2;
                     }
                     dlerror();
-                    /* we can let a windows application use any function with no args from FreeBSD libc*/
                     void *func = dlsym(lib, name);
 
                     char *error;
@@ -224,15 +224,19 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *ap
                             //}
                         }
                     }
-
+                    
                     IAT[i] = (uint64_t)func;
-                    *count += 1;
-
+                    
+                    dlerror();
                     void (*so_init)(brine_api *brine_api) = dlsym(lib, "so_init");
-                    char *init_error;
-                    if ((init_error = dlerror()) == NULL) {
+                    char *so_init_error;
+                    if ((so_init_error = dlerror()) == NULL) {
+                        if (debug)
+                            printf("so_init in %s\n", lib_path);
                         so_init(api);
                     }
+
+                    *count += 1;
                 }
             }
         }
@@ -297,18 +301,33 @@ int mprotect_sections(struct pe *pe, uint8_t *mapped_file) {
     return 0;
 }
 
-brine_api *load_api() {
-    void *brine_so = dlopen(brine_lib, RTLD_LAZY);
-    
+brine_api *load_api(void *brine_so) {
+    void *libc = dlopen("libc.so.7", RTLD_NOW);
+
     void (*brine_write_thread)(brine_thread *) = dlsym(brine_so, "brine_write_thread");
     int (*brine_read_thread)(brine_thread **) = dlsym(brine_so, "brine_read_thread");
     int (*set_teb_gs)() = dlsym(brine_so, "set_teb_gs");
     int (*set_sys_gs)() = dlsym(brine_so, "set_teb_gs");
+    int *(*get_argc)() = dlsym(brine_so, "get_argc");
+    char **(*get_argv)() = dlsym(brine_so, "get_argv");
+
+    void *(*host_malloc)(size_t) = dlsym(libc, "malloc");
+    size_t (*host_strlen)(const char *) = dlsym(libc, "strlen");
+    void *(*host_memcpy)(void *, const void *, size_t) = dlsym(libc, "memcpy");
+    int (*host_setvbuf)(FILE *, char *, int, size_t) = dlsym(libc, "setvbuf");
 
     brine_api *api = malloc(sizeof(struct brine_api));
+
     api->thread_write = brine_write_thread;
     api->thread_read = brine_read_thread;
     api->set_teb_gs = set_teb_gs;
     api->set_sys_gs = set_sys_gs;
+    api->get_argc = get_argc;
+    api->get_argv = get_argv;
+
+    api->host_malloc = host_malloc;
+    api->host_strlen = host_strlen;
+    api->host_memcpy = host_memcpy;
+    api->host_setvbuf = host_setvbuf;
     return api;
 }
