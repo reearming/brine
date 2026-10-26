@@ -3,6 +3,7 @@
 #define DEFAULT_ATTRIBUTES __attribute__((visibility("default")))
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #ifdef __x86_64__
 #define WIN_CDECL __attribute__((ms_abi, visibility("default")))
@@ -13,6 +14,8 @@
 #endif
 
 typedef struct brine_thread brine_thread;
+
+typedef char *win_va_list;
 
 //void brine_write_thread(void *sys_gs, void *teb);
 //brine_thread *brine_read_thread();
@@ -25,7 +28,11 @@ typedef struct brine_api {
     int (*set_sys_gs)();
     int *(*get_argc)();
     char **(*get_argv)();
-    va_list *(*va_list_win_to_sysv)(int argc, va_list arglist, ...);
+    va_list *(*win_va_to_sysv)(int argc, va_list arglist, int first_unused_gp);
+    int (*define_format_argc)(const char *format);
+
+    //brine parameters
+    uint8_t debug;
 
     //host functions
     void *(*host_malloc)(size_t);

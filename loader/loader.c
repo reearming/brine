@@ -311,7 +311,8 @@ brine_api *load_api(void *brine_so) {
     int (*set_sys_gs)() = dlsym(brine_so, "set_teb_gs");
     int *(*get_argc)() = dlsym(brine_so, "get_argc");
     char **(*get_argv)() = dlsym(brine_so, "get_argv");
-    va_list *(*va_list_win_to_sysv)(int, va_list, ...) = dlsym(brine_so, "va_list_win_to_sysv");
+    va_list *(*win_va_to_sysv)(int, va_list, int) = dlsym(brine_so, "win_va_to_sysv");
+    int (*define_format_argc)(const char *) = dlsym(brine_so, "define_format_argc");
     
     //host functions
     void *(*host_malloc)(size_t) = dlsym(libc, "malloc");
@@ -323,14 +324,20 @@ brine_api *load_api(void *brine_so) {
 
     brine_api *api = malloc(sizeof(struct brine_api));
 
+    //brine functions
     api->thread_write = brine_write_thread;
     api->thread_read = brine_read_thread;
     api->set_teb_gs = set_teb_gs;
     api->set_sys_gs = set_sys_gs;
     api->get_argc = get_argc;
     api->get_argv = get_argv;
-    api->va_list_win_to_sysv = va_list_win_to_sysv;
+    api->win_va_to_sysv = win_va_to_sysv;
+    api->define_format_argc = define_format_argc;
 
+    //brine parameters
+    api->debug = debug;
+
+    //host functions
     api->host_malloc = host_malloc;
     api->host_strlen = host_strlen;
     api->host_memcpy = host_memcpy;

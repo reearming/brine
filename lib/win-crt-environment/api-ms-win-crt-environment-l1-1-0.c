@@ -5,9 +5,14 @@
 char **_environ = NULL;
 extern char **environ;
 
+static brine_api *api;
+DEFAULT_ATTRIBUTES 
+void so_init(brine_api *brine_api) {
+    api = brine_api;
+}
+
 WIN_CDECL
 char ***__p__environ() {
-    fprintf(stderr, "%s called\n", __func__);
     if (!_environ) {
         _environ = environ;
     }

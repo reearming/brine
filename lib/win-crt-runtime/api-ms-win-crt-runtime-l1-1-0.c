@@ -7,7 +7,6 @@ int __argc;
 char **__argv;
 
 static struct brine_api *api;
-
 DEFAULT_ATTRIBUTES
 void so_init(struct brine_api *brine_api)
 {
@@ -18,19 +17,11 @@ void so_init(struct brine_api *brine_api)
 
 WIN_CDECL 
 int *__p___argc(void) {
-    fprintf(stderr, "%s called\n", __func__);
-    /*if (!_argc) {
-        _argc = argc;
-    }*/
     return &__argc;
 }
 
 WIN_CDECL
 char ***__p___argv(void) {
-    fprintf(stderr, "%s called\n", __func__);
-    /*if (!_argv) {
-        _argv = argv;
-    }*/
     return &__argv;
 }
 
@@ -63,7 +54,6 @@ int _initialize_narrow_environment(void) {
 
 WIN_CDECL
 int _initterm(_PVFV* pfbegin, _PVFV* pfend) {
-    fprintf(stderr, "%s called\n", __func__);
     while (pfbegin < pfend) {
         if (*pfbegin != 0)
             (*pfbegin)();
@@ -75,7 +65,6 @@ int _initterm(_PVFV* pfbegin, _PVFV* pfend) {
 WIN_CDECL
 int _initterm_e(_PIFV* pfbegin, _PIFV* pfend)
 {
-    fprintf(stderr, "%s called\n", __func__);
     while (pfbegin < pfend)
     {
         if (*pfbegin != 0)
@@ -114,7 +103,8 @@ _invalid_parameter_handler _set_invalid_parameter_handler(_invalid_parameter_han
     return 0;
 }
 
-void WIN_CDECL win_exit(int status) {
+WIN_CDECL
+void win_exit(int status) {
     api->host_exit(status);
 }
 __attribute__((alias("win_exit"), visibility("default")))

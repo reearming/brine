@@ -10,7 +10,6 @@ void so_init(brine_api *brine_api) {
 
 WIN_CDECL 
 size_t win_strlen(const char *str) {
-    fprintf(stderr, "%s called\n", __func__);
     return api->host_strlen(str); 
 }
 

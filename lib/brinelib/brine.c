@@ -61,21 +61,36 @@ char **get_argv() {
 }
 
 DEFAULT_ATTRIBUTES
-va_list *va_list_win_to_sysv(int argc, va_list arglist, ...) {
-    va_list args;
-    va_start(args, NULL);
-    printf("windows app:\n");
-    printf("fp_offset %02x\n", arglist[0].fp_offset);
-    printf("gp_offset %02x\n", arglist[0].gp_offset);
-    printf("overflow_arg_area %p, value: %lx\n", arglist[0].overflow_arg_area, *(uint64_t *)arglist[0].overflow_arg_area);
-    printf("reg_save_area %p\n", arglist[0].reg_save_area);
-    for (int i = 0; i < 3; i++) {
-        printf("\nsysv:\n");
-        printf("fp_offset %02x\n", args[i].fp_offset);
-        printf("gp_offset %02x\n", args[i].gp_offset);
-        printf("overflow_arg_area %p, value: %lx\n", args[i].overflow_arg_area, *(uint64_t *)args[i].overflow_arg_area);
-        printf("reg_save_area %p, value: %lx\n", args[i].reg_save_area, *(uint64_t *)args[i].reg_save_area);
+int define_format_argc(const char *format) {
+    int count = 0;
+    for (int i = 0; format[i] != '\0'; i++) {
+        if (format[i] == '%' && format[i+1] != '%')
+            count++;
     }
-    exit(0);
+    return count;
+}
+
+DEFAULT_ATTRIBUTES
+va_list *win_va_to_sysv(int argc, win_va_list arglist, uint8_t first_unused_gp) {
+    va_list *sysv_va_list = malloc(sizeof(va_list));
+    uint8_t gp_offset = 8 * first_unused_gp;
+    sysv_va_list[0]->gp_offset = gp_offset;
+    sysv_va_list[0]->reg_save_area = malloc(48);
+    if (argc + first_unused_gp > 6) {
+        sysv_va_list[0]->overflow_arg_area = malloc((argc - first_unused_gp) * 8);
+    }
+    int j = 0;
+    for (int i = 0; i < argc; i++) {
+        if (gp_offset < 48) {
+            *(uint64_t *)(sysv_va_list[0]->reg_save_area + gp_offset) = *(uint64_t *)arglist;
+            gp_offset += 8;
+        }
+        else {
+            *(uint64_t *)(sysv_va_list[0]->overflow_arg_area + j) = *(uint64_t *)arglist;
+            j += 8;
+        }
+        arglist += 8;
+    }
+    return sysv_va_list;
 }
 

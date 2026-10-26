@@ -9,7 +9,7 @@ WIN_CDECL
 int _configthreadlocale(int per_thread_locale_type) {
     int locale = thread_locale;
     thread_locale = locale;
-    fprintf(stderr, "[ STUB ] function %s coming soon\n", __func__);
+    printf("[ STUB ] function %s coming soon\n", __func__);
     return locale;
 }
 

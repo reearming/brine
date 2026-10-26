@@ -14,7 +14,6 @@ void so_init(brine_api *brine_api) {
 
 WIN_CDECL 
 void *win_memcpy(void *dst, const void *src, size_t n) {
-    fprintf(stderr, "%s called\n", __func__);
     return api->host_memcpy(dst, src, n);
 }
 

@@ -4,7 +4,7 @@
 
 WIN_CDECL
 int _matherr(struct _exception *except) {
-    fprintf(stderr, "[ STUB ] function %s coming soon\n", __func__);
+    printf("[ STUB ] function %s coming soon\n", __func__);
     return 0;
 }
 

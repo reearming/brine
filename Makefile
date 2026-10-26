@@ -27,7 +27,7 @@ LIBS=	api-ms-win-crt-stdio-l1-1-0.dll.so \
 
 .PHONY: all clean install uninstall
 
-all:	${OUT} brine ${LIBS}
+all:	${OUT} brine ${LIBS} include/brine.h
 
 ${OUT}:
 	mkdir -p ${OUT}

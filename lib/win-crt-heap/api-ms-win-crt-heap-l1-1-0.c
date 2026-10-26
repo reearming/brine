@@ -28,11 +28,6 @@ int _set_new_mode(int new_handler_mode) {
 
 WIN_ABI
 void *win_malloc(size_t size) {
-    fprintf(stderr, "%s called\n", __func__);
-    //api->set_sys_gs();
-    //api->set_teb_gs();
-//    return __builtin_malloc(size);
-    
     return api->host_malloc(size);
 }
 __attribute__((alias("win_malloc"), visibility("default")))
