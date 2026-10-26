@@ -209,7 +209,7 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *ap
 
                     char *error;
                     if ((error = dlerror()) != NULL) {
-                        fprintf(stderr, "error finding function %s\n", name);
+                        fprintf(stderr, "error finding function %s from %s\n", name, lib_path);
                         return -3;
                     }
                     
@@ -304,13 +304,16 @@ int mprotect_sections(struct pe *pe, uint8_t *mapped_file) {
 brine_api *load_api(void *brine_so) {
     void *libc = dlopen("libc.so.7", RTLD_NOW);
 
+    //brine functions
     void (*brine_write_thread)(brine_thread *) = dlsym(brine_so, "brine_write_thread");
     int (*brine_read_thread)(brine_thread **) = dlsym(brine_so, "brine_read_thread");
     int (*set_teb_gs)() = dlsym(brine_so, "set_teb_gs");
     int (*set_sys_gs)() = dlsym(brine_so, "set_teb_gs");
     int *(*get_argc)() = dlsym(brine_so, "get_argc");
     char **(*get_argv)() = dlsym(brine_so, "get_argv");
-
+    va_list *(*va_list_win_to_sysv)(int, va_list, ...) = dlsym(brine_so, "va_list_win_to_sysv");
+    
+    //host functions
     void *(*host_malloc)(size_t) = dlsym(libc, "malloc");
     size_t (*host_strlen)(const char *) = dlsym(libc, "strlen");
     void *(*host_memcpy)(void *, const void *, size_t) = dlsym(libc, "memcpy");
@@ -326,11 +329,13 @@ brine_api *load_api(void *brine_so) {
     api->set_sys_gs = set_sys_gs;
     api->get_argc = get_argc;
     api->get_argv = get_argv;
+    api->va_list_win_to_sysv = va_list_win_to_sysv;
 
     api->host_malloc = host_malloc;
     api->host_strlen = host_strlen;
     api->host_memcpy = host_memcpy;
     api->host_setvbuf = host_setvbuf;
     api->host_exit = host_exit;
+    api->host_fflush = host_fflush;
     return api;
 }

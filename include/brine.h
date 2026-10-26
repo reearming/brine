@@ -18,12 +18,16 @@ typedef struct brine_thread brine_thread;
 //brine_thread *brine_read_thread();
 
 typedef struct brine_api {
+    //brine functions
     void (*thread_write)(brine_thread *);
     int (*thread_read)(brine_thread **);
     int (*set_teb_gs)();
     int (*set_sys_gs)();
     int *(*get_argc)();
     char **(*get_argv)();
+    va_list *(*va_list_win_to_sysv)(int argc, va_list arglist, ...);
+
+    //host functions
     void *(*host_malloc)(size_t);
     size_t (*host_strlen)(const char *s);
     void *(*host_memcpy)(void *dst, const void *src, size_t n);

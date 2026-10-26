@@ -36,8 +36,13 @@ int *__p__fmode(void) {
 
 WIN_CDECL
 int __stdio_common_vfprintf(const uint64_t options, const FILE *stream, const char *format, locale_t const locale, va_list arglist) {
-    vfprintf((FILE *)stream, format, arglist);
-    return 0;
+    return vfprintf((FILE *)stream, format, arglist);
+}
+
+WIN_CDECL
+int __stdio_common_vfscanf(const uint64_t options, FILE *stream, const char *format, locale_t const locale, va_list arglist) {
+    va_list *args = api->va_list_win_to_sysv(1, arglist, 12, "asd", NULL);
+    return vfscanf(stream, format, *args);
 }
 
 WIN_CDECL

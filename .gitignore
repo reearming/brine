@@ -1,7 +1,7 @@
-*.o
 *.pieo
 .depend*
+*.so
+*.o
 brine
 brine.core
 out/
-*.so

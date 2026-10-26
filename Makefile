@@ -23,7 +23,7 @@ LIBS=	api-ms-win-crt-stdio-l1-1-0.dll.so \
 		brine.so \
 
 .PATH: loader lib lib/win-crt-stdio lib/win-crt-runtime lib/win-crt-locale lib/win-crt-heap lib/win-crt-private lib/win-crt-string lib/KERNEL32 lib/win-crt-math \
-	lib/win-crt-environment lib/brine
+	lib/win-crt-environment lib/brinelib
 
 .PHONY: all clean install uninstall
 
