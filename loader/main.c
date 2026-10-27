@@ -16,6 +16,8 @@
 
 
 uint8_t debug = 0;
+target_mode target = MSVCx64;
+
 extern struct stat sb;
 extern const char *brine_lib;
 static int __argc = 2;
@@ -23,24 +25,25 @@ static char **__argv;
 
 char *parse_args(int argc, char *argv[]) {
     char *exefile = NULL;
-    uint8_t is_arg = 1;
     for (int i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {
-            switch (argv[i][1]) {
-                case '-':
-                    if (strcmp(argv[i], "--debug") == 0)
-                        debug = 1;
-                    break;
-                case 'd':
-                    debug = 1;
-                    break;
-                default:
-                    fprintf(stderr, "invalid argument '%s'\n", argv[i]);
-                    return NULL;
+            if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--debug") == 0)
+                debug = 1;
+            else if (strcmp(argv[i], "-tm") == 0 || strcmp(argv[i], "--target-mode") == 0) {
+                i++;
+                if (strcmp(argv[i], "mingw-x86_64") == 0)
+                    target = MINGWx86_64;
+                else if (strcmp(argv[i], "msvc-x64") == 0)
+                    target = MSVCx64;
+                else {
+                    fprintf(stderr, "%s: invalid option: \'%s\'\n", argv[i-1], argv[i]);
+                    exit(1);
+                }
             }
-        }
-        else if (!is_arg) {
-            
+            else {
+                fprintf(stderr, "invalid option: \'%s\'\n", argv[i]);
+                exit(1);
+            }
         }
         else {
             exefile = argv[i];
@@ -99,8 +102,12 @@ int main(int argc, char *argv[]) {
 
     uint32_t dll_count = 0;
     void *brine_so = dlopen(brine_lib, RTLD_LAZY);
-    void (*brinelib_init)(int, char **) = dlsym(brine_so, "brinelib_init");
-    brinelib_init(__argc, __argv);
+    void (*brinelib_init)(struct brine_options) = dlsym(brine_so, "brinelib_init");
+    struct brine_options settings;
+    settings.target = target;
+    settings.win_argc = __argc;
+    settings.win_argv = __argv;
+    brinelib_init(settings);
 
     brine_api *api;
     if (dir[1].size != 0)

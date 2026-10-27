@@ -1,5 +1,5 @@
 ## brine is not an emulator
-**a Windows compatibility layer for the FreeBSD**
+**a Windows compatibility layer for FreeBSD**
 
 the goal is to run Windows applications on FreeBSD
 

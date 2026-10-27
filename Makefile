@@ -56,7 +56,7 @@ ${LIBS}:
 	${CC} ${CFLAGS} ${CFLAGSLIB} ${.ALLSRC} -o ${.TARGET}
 
 clean:
-	rm -f *.o .depend* brine *.dll.so
+	rm -f *.o .depend* brine *.so
 	rm -rf ${OUT}
 
 install: brine

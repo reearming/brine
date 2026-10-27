@@ -15,7 +15,9 @@
 
 static int fd;
 struct stat sb;
+
 extern int debug;
+extern target_mode target;
 
 uint16_t try_MZ() {
     uint16_t mz_sig;
@@ -164,7 +166,7 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *ap
 
         }
         else {
-
+        
         }
     }
     else {
@@ -199,7 +201,7 @@ int load_dll(struct pe *pe, uint8_t *mapped_file, uint32_t *count, brine_api *ap
                     if (path_size >= (long)sizeof(lib_path) || path_size < 0)
                         return -1;
 
-                    void *lib = dlopen(lib_path, RTLD_LAZY | RTLD_DEEPBIND);
+                    void *lib = dlopen(lib_path, RTLD_NOW);
                     if (!lib) {
                         fprintf(stderr, "error loading %s\n", lib_path);
                         return -2;
@@ -311,8 +313,8 @@ brine_api *load_api(void *brine_so) {
     int (*set_sys_gs)() = dlsym(brine_so, "set_teb_gs");
     int *(*get_argc)() = dlsym(brine_so, "get_argc");
     char **(*get_argv)() = dlsym(brine_so, "get_argv");
-    va_list *(*win_va_to_sysv)(int, va_list, int) = dlsym(brine_so, "win_va_to_sysv");
-    int (*define_format_argc)(const char *) = dlsym(brine_so, "define_format_argc");
+    va_list *(*format_win_va_to_sysv)(const char *, va_list, uint8_t, uint8_t) = dlsym(brine_so, "format_win_va_to_sysv");
+    char *(*normalize_format)(const char *) = dlsym(brine_so, "normalize_format");
     
     //host functions
     void *(*host_malloc)(size_t) = dlsym(libc, "malloc");
@@ -321,6 +323,7 @@ brine_api *load_api(void *brine_so) {
     int (*host_setvbuf)(FILE *, char *, int, size_t) = dlsym(libc, "setvbuf");
     void (*host_exit)(int) = dlsym(libc, "exit");
     int (*host_fflush)(FILE *) = dlsym(libc, "fflush");
+    void (*host_free)(void *ptr) = dlsym(libc, "free");
 
     brine_api *api = malloc(sizeof(struct brine_api));
 
@@ -331,11 +334,8 @@ brine_api *load_api(void *brine_so) {
     api->set_sys_gs = set_sys_gs;
     api->get_argc = get_argc;
     api->get_argv = get_argv;
-    api->win_va_to_sysv = win_va_to_sysv;
-    api->define_format_argc = define_format_argc;
-
-    //brine parameters
-    api->debug = debug;
+    api->format_win_va_to_sysv = format_win_va_to_sysv; 
+    api->normalize_format = normalize_format;
 
     //host functions
     api->host_malloc = host_malloc;
@@ -344,5 +344,11 @@ brine_api *load_api(void *brine_so) {
     api->host_setvbuf = host_setvbuf;
     api->host_exit = host_exit;
     api->host_fflush = host_fflush;
+    api->host_free = host_free;
+
+    //brine parameters
+    api->debug = debug;
+    api->target = target;
+
     return api;
 }
