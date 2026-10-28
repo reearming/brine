@@ -1,4 +1,5 @@
 #include "../../include/brine.h"
+#include "../../include/ucrt/corecrt_stdio_config.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -36,28 +37,22 @@ int *__p__fmode(void) {
 }
 
 WIN_CDECL
-int __stdio_common_vfprintf(const uint64_t options, FILE *stream, const char *format, locale_t const locale, va_list arglist) {
+int __stdio_common_vfprintf(const uint64_t options, FILE *stream, const char *format, const void *locale, va_list arglist) {
     int result;
-    if (api->target == MSVCx64) {
-        char *normalized = api->normalize_format(format);
-        va_list *args = api->format_win_va_to_sysv(normalized, arglist, 2, 0);
-        result = vfprintf(stream, normalized, *args);
-        free(args[0]->overflow_arg_area);
-        free(args[0]->reg_save_area);
-        free(args);
-    }
-    else if (api->target == MINGWx86_64) {
-        va_list *args = api->format_win_va_to_sysv(format, arglist, 2, 0);
-        result = vfprintf(stream, format, *args);
-        free(args[0]->overflow_arg_area);
-        free(args[0]->reg_save_area);
-        free(args);
-    }
+   
+    char *normalized = api->normalize_format(format);
+    va_list *args = api->format_win_va_to_sysv(normalized, arglist, 2, 0);
+    result = vfprintf(stream, normalized, *args);
+    free(args[0]->overflow_arg_area);
+    free(args[0]->reg_save_area);
+    free(args);
+    free(normalized);
+    
     return result;
 }
 
 WIN_CDECL
-int __stdio_common_vfscanf(const uint64_t options, FILE *stream, const char *format, locale_t const locale, va_list arglist) {
+int __stdio_common_vfscanf(const uint64_t options, FILE *stream, const char *format, const void *locale, va_list arglist) {
     char *normalized = api->normalize_format(format);
     va_list *args = api->format_win_va_to_sysv(normalized, arglist, 2, 0);
     int result = vfscanf(stream, normalized, *args);
